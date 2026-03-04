@@ -228,6 +228,123 @@ function initDatabase() {
     )
   `);
 
+  // Exercise library table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS exercises (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professionalId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      muscleGroups TEXT,
+      equipment TEXT,
+      difficulty TEXT DEFAULT 'beginner',
+      instructions TEXT,
+      videoUrl TEXT,
+      imageUrl TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Invoices table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS invoices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientId INTEGER NOT NULL,
+      professionalId INTEGER NOT NULL,
+      invoiceNumber TEXT NOT NULL,
+      amount REAL NOT NULL,
+      tax REAL DEFAULT 0,
+      total REAL NOT NULL,
+      status TEXT DEFAULT 'pending',
+      dueDate TEXT,
+      paidDate TEXT,
+      items TEXT,
+      notes TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (clientId) REFERENCES clients(id) ON DELETE CASCADE,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Goals table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS goals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientId INTEGER NOT NULL,
+      professionalId INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      targetDate TEXT,
+      targetValue REAL,
+      currentValue REAL,
+      unit TEXT,
+      status TEXT DEFAULT 'active',
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (clientId) REFERENCES clients(id) ON DELETE CASCADE,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Attendance/check-ins table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS attendance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientId INTEGER NOT NULL,
+      appointmentId INTEGER,
+      professionalId INTEGER NOT NULL,
+      checkInTime TEXT NOT NULL,
+      checkOutTime TEXT,
+      status TEXT DEFAULT 'present',
+      notes TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (clientId) REFERENCES clients(id) ON DELETE CASCADE,
+      FOREIGN KEY (appointmentId) REFERENCES appointments(id) ON DELETE SET NULL,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Marketing campaigns table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS marketing_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professionalId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      subject TEXT,
+      message TEXT NOT NULL,
+      targetAudience TEXT,
+      status TEXT DEFAULT 'draft',
+      scheduledAt TEXT,
+      sentAt TEXT,
+      recipientCount INTEGER DEFAULT 0,
+      openCount INTEGER DEFAULT 0,
+      clickCount INTEGER DEFAULT 0,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Workout templates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS workout_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professionalId INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      category TEXT,
+      description TEXT,
+      exercises TEXT,
+      estimatedDuration INTEGER,
+      difficulty TEXT DEFAULT 'beginner',
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   console.log('Tables created successfully');
 }
 
@@ -892,7 +1009,174 @@ function insertNotificationPrefs(professionalId) {
           prefCount++;
           if (prefCount === notificationPrefs.length) {
             console.log(`Inserted ${prefCount} notification preferences`);
-            console.log('✅ All sample data insertion complete!');
+            insertExerciseLibrary(professionalId);
+          }
+        }
+      }
+    );
+  });
+}
+
+// Insert sample exercise library
+function insertExerciseLibrary(professionalId) {
+  console.log('Inserting sample exercise library...');
+
+  const exercises = [
+    { professionalId, name: 'Push-ups', category: 'Strength', muscleGroups: '["chest", "triceps", "shoulders"]', equipment: 'None', difficulty: 'beginner', instructions: 'Start in plank position, lower body to ground, push back up' },
+    { professionalId, name: 'Squats', category: 'Strength', muscleGroups: '["quadriceps", "glutes", "hamstrings"]', equipment: 'None', difficulty: 'beginner', instructions: 'Stand with feet shoulder-width apart, lower hips back and down' },
+    { professionalId, name: 'Deadlift', category: 'Strength', muscleGroups: '["back", "glutes", "hamstrings"]', equipment: 'Barbell', difficulty: 'advanced', instructions: 'Lift barbell from ground to hip level, keep back straight' },
+    { professionalId, name: 'Plank', category: 'Core', muscleGroups: '["abs", "core", "shoulders"]', equipment: 'None', difficulty: 'beginner', instructions: 'Hold body in straight line from head to heels' },
+    { professionalId, name: 'Lunges', category: 'Strength', muscleGroups: '["quadriceps", "glutes"]', equipment: 'None', difficulty: 'beginner', instructions: 'Step forward, lower back knee toward ground' },
+    { professionalId, name: 'Burpees', category: 'Cardio', muscleGroups: '["full body"]', equipment: 'None', difficulty: 'advanced', instructions: 'Jump, do push-up, jump back, jump up' },
+    { professionalId, name: 'Mountain Climbers', category: 'Cardio', muscleGroups: '["core", "shoulders", "legs"]', equipment: 'None', difficulty: 'intermediate', instructions: 'In plank position, drive knees to chest alternately' },
+    { professionalId, name: 'Dumbbell Rows', category: 'Strength', muscleGroups: '["back", "biceps"]', equipment: 'Dumbbell', difficulty: 'beginner', instructions: 'Bend over, pull dumbbell to hip' },
+    { professionalId, name: 'Bench Press', category: 'Strength', muscleGroups: '["chest", "triceps"]', equipment: 'Barbell', difficulty: 'intermediate', instructions: 'Lie on bench, press barbell up from chest' },
+    { professionalId, name: 'Yoga Sun Salutation', category: 'Flexibility', muscleGroups: '["full body"]', equipment: 'None', difficulty: 'beginner', instructions: 'Flowing sequence of poses' },
+    { professionalId, name: 'Kettlebell Swing', category: 'Strength', muscleGroups: '["glutes", "hamstrings", "core"]', equipment: 'Kettlebell', difficulty: 'intermediate', instructions: 'Swing kettlebell from between legs to chest height' },
+    { professionalId, name: 'Pull-ups', category: 'Strength', muscleGroups: '["back", "biceps"]', equipment: 'Pull-up bar', difficulty: 'advanced', instructions: 'Hang from bar, pull body up until chin over bar' },
+  ];
+
+  let exCount = 0;
+  exercises.forEach((ex) => {
+    db.run(
+      `INSERT INTO exercises (professionalId, name, category, muscleGroups, equipment, difficulty, instructions)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [ex.professionalId, ex.name, ex.category, ex.muscleGroups, ex.equipment, ex.difficulty, ex.instructions],
+      function(err) {
+        if (err) console.error(`Error inserting exercise:`, err.message);
+        else {
+          exCount++;
+          if (exCount === exercises.length) {
+            console.log(`Inserted ${exCount} exercises`);
+            insertInvoices(professionalId);
+          }
+        }
+      }
+    );
+  });
+}
+
+// Insert sample invoices
+function insertInvoices(professionalId) {
+  console.log('Inserting sample invoices...');
+
+  const invoices = [
+    { professionalId, clientId: 1, invoiceNumber: 'INV-001', amount: 150, tax: 0, total: 150, status: 'paid', dueDate: '2024-03-01', paidDate: '2024-03-01', items: JSON.stringify([{desc: 'Training Session', qty: 5, rate: 30}]) },
+    { professionalId, clientId: 2, invoiceNumber: 'INV-002', amount: 200, tax: 0, total: 200, status: 'pending', dueDate: '2024-03-15', paidDate: null, items: JSON.stringify([{desc: 'Yoga Package', qty: 10, rate: 20}]) },
+    { professionalId, clientId: 3, invoiceNumber: 'INV-003', amount: 300, tax: 0, total: 300, status: 'paid', dueDate: '2024-03-05', paidDate: '2024-03-04', items: JSON.stringify([{desc: 'Personal Training', qty: 10, rate: 30}]) },
+    { professionalId, clientId: 4, invoiceNumber: 'INV-004', amount: 120, tax: 0, total: 120, status: 'overdue', dueDate: '2024-02-28', paidDate: null, items: JSON.stringify([{desc: 'Assessment', qty: 1, rate: 120}]) },
+    { professionalId, clientId: 5, invoiceNumber: 'INV-005', amount: 180, tax: 0, total: 180, status: 'pending', dueDate: '2024-03-20', paidDate: null, items: JSON.stringify([{desc: 'Posture Correction', qty: 6, rate: 30}]) },
+  ];
+
+  let invCount = 0;
+  invoices.forEach((inv) => {
+    db.run(
+      `INSERT INTO invoices (professionalId, clientId, invoiceNumber, amount, tax, total, status, dueDate, paidDate, items)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [inv.professionalId, inv.clientId, inv.invoiceNumber, inv.amount, inv.tax, inv.total, inv.status, inv.dueDate, inv.paidDate, inv.items],
+      function(err) {
+        if (err) console.error(`Error inserting invoice:`, err.message);
+        else {
+          invCount++;
+          if (invCount === invoices.length) {
+            console.log(`Inserted ${invCount} invoices`);
+            insertGoals(professionalId);
+          }
+        }
+      }
+    );
+  });
+}
+
+// Insert sample goals
+function insertGoals(professionalId) {
+  console.log('Inserting sample goals...');
+
+  const goals = [
+    { professionalId, clientId: 1, title: 'Lose 10 lbs', description: 'Weight loss goal', targetDate: '2024-06-01', targetValue: 75, currentValue: 84, unit: 'lbs', status: 'active' },
+    { professionalId, clientId: 2, title: 'Improve Flexibility', description: 'Touch toes by end of program', targetDate: '2024-05-01', targetValue: 1, currentValue: 0, unit: 'level', status: 'active' },
+    { professionalId, clientId: 3, title: 'Bench Press 200 lbs', description: 'Increase bench press strength', targetDate: '2024-07-01', targetValue: 200, currentValue: 175, unit: 'lbs', status: 'active' },
+    { professionalId, clientId: 4, title: 'Run 5K', description: 'Complete 5K run', targetDate: '2024-04-15', targetValue: 5, currentValue: 2, unit: 'km', status: 'active' },
+    { professionalId, clientId: 5, title: 'Fix Posture', description: 'Correct rounded shoulders', targetDate: '2024-06-01', targetValue: 1, currentValue: 0, unit: 'level', status: 'active' },
+  ];
+
+  let goalCount = 0;
+  goals.forEach((g) => {
+    db.run(
+      `INSERT INTO goals (professionalId, clientId, title, description, targetDate, targetValue, currentValue, unit, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [g.professionalId, g.clientId, g.title, g.description, g.targetDate, g.targetValue, g.currentValue, g.unit, g.status],
+      function(err) {
+        if (err) console.error(`Error inserting goal:`, err.message);
+        else {
+          goalCount++;
+          if (goalCount === goals.length) {
+            console.log(`Inserted ${goalCount} goals`);
+            insertAttendance(professionalId);
+          }
+        }
+      }
+    );
+  });
+}
+
+// Insert sample attendance
+function insertAttendance(professionalId) {
+  console.log('Inserting sample attendance...');
+
+  const today = new Date();
+  const attendance = [
+    { professionalId, clientId: 1, checkInTime: new Date(today.getTime() - 86400000).toISOString(), checkOutTime: new Date(today.getTime() - 82800000).toISOString(), status: 'present' },
+    { professionalId, clientId: 2, checkInTime: new Date(today.getTime() - 86400000).toISOString(), checkOutTime: new Date(today.getTime() - 82800000).toISOString(), status: 'present' },
+    { professionalId, clientId: 3, checkInTime: new Date(today.getTime() - 172800000).toISOString(), checkOutTime: new Date(today.getTime() - 169200000).toISOString(), status: 'present' },
+    { professionalId, clientId: 1, checkInTime: new Date(today.getTime() - 259200000).toISOString(), checkOutTime: new Date(today.getTime() - 255600000).toISOString(), status: 'present' },
+    { professionalId, clientId: 4, checkInTime: new Date(today.getTime() - 345600000).toISOString(), checkOutTime: null, status: 'late' },
+  ];
+
+  let attCount = 0;
+  attendance.forEach((a) => {
+    db.run(
+      `INSERT INTO attendance (professionalId, clientId, checkInTime, checkOutTime, status)
+       VALUES (?, ?, ?, ?, ?)`,
+      [a.professionalId, a.clientId, a.checkInTime, a.checkOutTime, a.status],
+      function(err) {
+        if (err) console.error(`Error inserting attendance:`, err.message);
+        else {
+          attCount++;
+          if (attCount === attendance.length) {
+            console.log(`Inserted ${attCount} attendance records`);
+            insertMarketingCampaigns(professionalId);
+          }
+        }
+      }
+    );
+  });
+}
+
+// Insert sample marketing campaigns
+function insertMarketingCampaigns(professionalId) {
+  console.log('Inserting sample marketing campaigns...');
+
+  const campaigns = [
+    { professionalId, name: 'Spring Fitness Special', type: 'email', subject: 'Get Fit for Spring!', message: 'Special discount on training packages this spring.', targetAudience: 'all', status: 'sent', sentAt: new Date().toISOString(), recipientCount: 150, openCount: 45, clickCount: 12 },
+    { professionalId, name: 'New Year Promotion', type: 'email', subject: 'New Year, New You!', message: 'Start 2024 with a personalized fitness plan.', targetAudience: 'prospects', status: 'sent', sentAt: new Date(Date.now() - 604800000).toISOString(), recipientCount: 200, openCount: 80, clickCount: 25 },
+    { professionalId, name: 'Refer a Friend', type: 'email', subject: 'Refer a Friend, Get Discount!', message: 'Give $50, Get $50 towards your next package.', targetAudience: 'clients', status: 'draft', scheduledAt: null, recipientCount: 0, openCount: 0, clickCount: 0 },
+    { professionalId, name: 'Nutrition Workshop', type: 'email', subject: 'Free Nutrition Workshop', message: 'Join our free workshop on healthy eating.', targetAudience: 'all', status: 'scheduled', scheduledAt: new Date(Date.now() + 1209600000).toISOString(), recipientCount: 0, openCount: 0, clickCount: 0 },
+  ];
+
+  let campCount = 0;
+  campaigns.forEach((c) => {
+    db.run(
+      `INSERT INTO marketing_campaigns (professionalId, name, type, subject, message, targetAudience, status, scheduledAt, sentAt, recipientCount, openCount, clickCount)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [c.professionalId, c.name, c.type, c.subject, c.message, c.targetAudience, c.status, c.scheduledAt, c.sentAt, c.recipientCount, c.openCount, c.clickCount],
+      function(err) {
+        if (err) console.error(`Error inserting campaign:`, err.message);
+        else {
+          campCount++;
+          if (campCount === campaigns.length) {
+            console.log(`Inserted ${campCount} marketing campaigns`);
+            console.log('✅ ALL sample data insertion complete!');
           }
         }
       }

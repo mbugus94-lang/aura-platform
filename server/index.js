@@ -887,6 +887,416 @@ app.get('/api/notifications/history/:clientId', authenticateToken, async (req, r
 });
 
 // ============================================================================
+// EXERCISE LIBRARY ROUTES
+// ============================================================================
+
+// Get all exercises
+app.get('/api/exercises', authenticateToken, async (req, res) => {
+  try {
+    const { category, difficulty } = req.query;
+    let query = 'SELECT * FROM exercises WHERE professionalId = ?';
+    let params = [req.user.id];
+    
+    if (category) {
+      query += ' AND category = ?';
+      params.push(category);
+    }
+    if (difficulty) {
+      query += ' AND difficulty = ?';
+      params.push(difficulty);
+    }
+    
+    query += ' ORDER BY category, name';
+    
+    const exercises = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    exercises.forEach(ex => {
+      if (ex.muscleGroups) ex.muscleGroups = JSON.parse(ex.muscleGroups);
+    });
+    
+    res.json(exercises);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create exercise
+app.post('/api/exercises', authenticateToken, async (req, res) => {
+  try {
+    const { name, category, muscleGroups, equipment, difficulty, instructions, videoUrl, imageUrl } = req.body;
+    
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO exercises (professionalId, name, category, muscleGroups, equipment, difficulty, instructions, videoUrl, imageUrl)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, name, category, muscleGroups ? JSON.stringify(muscleGroups) : null, equipment, difficulty || 'beginner', instructions, videoUrl, imageUrl],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const exercise = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM exercises WHERE id = ?', [result.lastID], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.status(201).json(exercise);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// INVOICE ROUTES
+// ============================================================================
+
+// Get all invoices
+app.get('/api/invoices', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, status } = req.query;
+    let query = 'SELECT * FROM invoices WHERE professionalId = ?';
+    let params = [req.user.id];
+    
+    if (clientId) {
+      query += ' AND clientId = ?';
+      params.push(clientId);
+    }
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY createdAt DESC';
+    
+    const invoices = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    invoices.forEach(inv => {
+      if (inv.items) inv.items = JSON.parse(inv.items);
+    });
+    
+    res.json(invoices);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create invoice
+app.post('/api/invoices', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, invoiceNumber, amount, tax, total, status, dueDate, items, notes } = req.body;
+    
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO invoices (professionalId, clientId, invoiceNumber, amount, tax, total, status, dueDate, items, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, clientId, invoiceNumber, amount, tax || 0, total, status || 'pending', dueDate, items ? JSON.stringify(items) : null, notes],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const invoice = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM invoices WHERE id = ?', [result.lastID], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.status(201).json(invoice);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark invoice as paid
+app.put('/api/invoices/:id/pay', authenticateToken, async (req, res) => {
+  try {
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE invoices SET status = 'paid', paidDate = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND professionalId = ?`,
+        [req.params.id, req.user.id],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const invoice = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM invoices WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.json(invoice);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// GOALS ROUTES
+// ============================================================================
+
+// Get goals for a client
+app.get('/api/goals/:clientId', authenticateToken, async (req, res) => {
+  try {
+    const goals = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM goals WHERE clientId = ? AND professionalId = ? ORDER BY createdAt DESC', [req.params.clientId, req.user.id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    res.json(goals);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create goal
+app.post('/api/goals', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, title, description, targetDate, targetValue, currentValue, unit, status } = req.body;
+    
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO goals (professionalId, clientId, title, description, targetDate, targetValue, currentValue, unit, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, clientId, title, description, targetDate, targetValue, currentValue || 0, unit, status || 'active'],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const goal = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM goals WHERE id = ?', [result.lastID], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.status(201).json(goal);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update goal progress
+app.put('/api/goals/:id/progress', authenticateToken, async (req, res) => {
+  try {
+    const { currentValue } = req.body;
+    
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE goals SET currentValue = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND professionalId = ?`,
+        [currentValue, req.params.id, req.user.id],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const goal = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM goals WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.json(goal);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// ATTENDANCE ROUTES
+// ============================================================================
+
+// Get attendance records
+app.get('/api/attendance', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, startDate, endDate } = req.query;
+    let query = 'SELECT * FROM attendance WHERE professionalId = ?';
+    let params = [req.user.id];
+    
+    if (clientId) {
+      query += ' AND clientId = ?';
+      params.push(clientId);
+    }
+    if (startDate) {
+      query += ' AND date(checkInTime) >= ?';
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ' AND date(checkInTime) <= ?';
+      params.push(endDate);
+    }
+    
+    query += ' ORDER BY checkInTime DESC';
+    
+    const attendance = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check in client
+app.post('/api/attendance/checkin', authenticateToken, async (req, res) => {
+  try {
+    const { clientId, appointmentId, notes } = req.body;
+    const checkInTime = new Date().toISOString();
+    
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO attendance (professionalId, clientId, appointmentId, checkInTime, status, notes)
+         VALUES (?, ?, ?, ?, 'present', ?)`,
+        [req.user.id, clientId, appointmentId || null, checkInTime, notes],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    res.status(201).json({ id: result.lastID, checkInTime, status: 'present' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check out client
+app.post('/api/attendance/:id/checkout', authenticateToken, async (req, res) => {
+  try {
+    const checkOutTime = new Date().toISOString();
+    
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE attendance SET checkOutTime = ? WHERE id = ? AND professionalId = ?`,
+        [checkOutTime, req.params.id, req.user.id],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const attendance = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM attendance WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.json(attendance);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// MARKETING CAMPAIGN ROUTES
+// ============================================================================
+
+// Get marketing campaigns
+app.get('/api/marketing', authenticateToken, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = 'SELECT * FROM marketing_campaigns WHERE professionalId = ?';
+    let params = [req.user.id];
+    
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY createdAt DESC';
+    
+    const campaigns = await new Promise((resolve, reject) => {
+      db.all(query, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    res.json(campaigns);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create marketing campaign
+app.post('/api/marketing', authenticateToken, async (req, res) => {
+  try {
+    const { name, type, subject, message, targetAudience, status, scheduledAt } = req.body;
+    
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO marketing_campaigns (professionalId, name, type, subject, message, targetAudience, status, scheduledAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [req.user.id, name, type, subject, message, targetAudience, status || 'draft', scheduledAt],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const campaign = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM marketing_campaigns WHERE id = ?', [result.lastID], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.status(201).json(campaign);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Send marketing campaign (simulated)
+app.post('/api/marketing/:id/send', authenticateToken, async (req, res) => {
+  try {
+    // Get client count for this professional
+    const clients = await new Promise((resolve, reject) => {
+      db.all('SELECT COUNT(*) as count FROM clients WHERE professionalId = ?', [req.user.id], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+    
+    const recipientCount = clients[0]?.count || 0;
+    
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE marketing_campaigns SET status = 'sent', sentAt = CURRENT_TIMESTAMP, recipientCount = ? WHERE id = ? AND professionalId = ?`,
+        [recipientCount, req.params.id, req.user.id],
+        function(err) { if (err) reject(err); else resolve(this); }
+      );
+    });
+    
+    const campaign = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM marketing_campaigns WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    res.json({ 
+      ...campaign, 
+      note: `[DEMO] Campaign would be sent to ${recipientCount} recipients` 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // START SERVER
 // ============================================================================
 
