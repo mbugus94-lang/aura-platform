@@ -1,376 +1,474 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aura Platform - Wellness Business Management</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #6366f1; --primary-dark: #4f46e5; --secondary: #10b981;
-            --danger: #ef4444; --warning: #f59e0b; --dark: #1f2937;
-            --light: #f9fafb; --gray: #6b7280; --border: #e5e7eb;
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--light); color: var(--dark); line-height: 1.6; }
-        
-        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .login-box { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); width: 100%; max-width: 400px; }
-        .login-logo { text-align: center; margin-bottom: 2rem; }
-        .login-logo h1 { font-size: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .login-logo p { color: var(--gray); font-size: 0.875rem; }
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 1rem; }
-        .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
-        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 0.5rem; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: var(--primary); color: white; width: 100%; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-secondary { background: var(--secondary); color: white; }
-        
-        .dashboard { display: none; }
-        .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 250px; background: white; border-right: 1px solid var(--border); padding: 1.5rem; overflow-y: auto; }
-        .sidebar-logo { font-size: 1.5rem; font-weight: bold; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 2rem; }
-        .nav-item { padding: 0.75rem 1rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; }
-        .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
-        .main-content { margin-left: 250px; padding: 2rem; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .header h1 { font-size: 1.75rem; }
-        .user-info { display: flex; align-items: center; gap: 1rem; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
-        .stat-card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
-        .stat-card h3 { color: var(--gray); font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem; }
-        .stat-card .value { font-size: 2rem; font-weight: bold; color: var(--dark); }
-        .stat-card .change { font-size: 0.875rem; margin-top: 0.5rem; }
-        .stat-card .change.positive { color: var(--secondary); }
-        
-        .data-table { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); overflow: hidden; }
-        .data-table table { width: 100%; border-collapse: collapse; }
-        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); }
-        .data-table th { background: var(--light); font-weight: 600; color: var(--gray); font-size: 0.875rem; }
-        
-        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-warning { background: #fef3c7; color: #92400e; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center; z-index: 1000; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 2rem; border-radius: 1rem; max-width: 500px; width: 90%; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray); }
-        
-        .chat-container { display: flex; flex-direction: column; height: 500px; background: white; border-radius: 0.75rem; overflow: hidden; }
-        .chat-messages { flex: 1; padding: 1rem; overflow-y: auto; }
-        .chat-message { margin-bottom: 1rem; max-width: 80%; }
-        .chat-message.user { margin-left: auto; text-align: right; }
-        .chat-message .bubble { display: inline-block; padding: 0.75rem 1rem; border-radius: 1rem; background: var(--light); }
-        .chat-message.user .bubble { background: var(--primary); color: white; }
-        .chat-input { display: flex; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--border); }
-        
-        .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark); color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-        .toast.show { transform: translateY(0); opacity: 1; }
-        .toast.success { background: var(--secondary); }
-        .toast.error { background: var(--danger); }
-        
-        .section { display: none; }
-        .section.active { display: block; }
-        
-        .quick-actions { display: flex; gap: 1rem; margin-bottom: 2rem; }
-        .quick-action-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: white; border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer; }
-        .quick-action-btn:hover { border-color: var(--primary); color: var(--primary); }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fluxora - Service Business OS</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #0d9488;
+      --primary-dark: #0f766e;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #dbeafe, transparent 40%), var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+    }
+    h1, h2, h3 { margin: 0 0 0.75rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.05rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .grid { display: grid; gap: 1rem; }
+    .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+    .kpi { font-size: 1.8rem; font-weight: 700; }
+    .muted { color: var(--muted); font-size: 0.92rem; }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font: inherit;
+    }
+    textarea { resize: vertical; min-height: 84px; }
+    button {
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: var(--primary-dark); }
+    button.secondary {
+      background: #eef2ff;
+      color: #312e81;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 0.55rem;
+      text-align: left;
+      font-size: 0.92rem;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .hidden { display: none; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .chat-log {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem;
+      max-height: 250px;
+      overflow: auto;
+      margin-bottom: 0.6rem;
+    }
+    .msg { margin-bottom: 0.65rem; }
+    .msg b { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 0.2rem; }
+    .status { font-size: 0.85rem; margin-top: 0.45rem; }
+    .status.error { color: var(--danger); }
+    .status.ok { color: #065f46; }
+    body.dark {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --primary: #14b8a6;
+      --primary-dark: #0d9488;
+    }
+  </style>
 </head>
 <body>
-    <div class="login-container" id="loginPage">
-        <div class="login-box">
-            <div class="login-logo">
-                <h1>🏋️ Aura</h1>
-                <p>Wellness Business Management</p>
-            </div>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="loginEmail" value="demo@aura.com" required>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="loginPassword" value="demo123" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Sign In</button>
-            </form>
-            <p style="margin-top:1rem;text-align:center;font-size:0.875rem;color:var(--gray)">demo@aura.com / demo123</p>
-        </div>
+  <div class="wrap">
+    <div class="card topbar">
+      <div>
+        <h1>Fluxora</h1>
+        <div class="muted">Service Business OS: clients, bookings, delivery notes, invoicing, and assistant workflows.</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <button class="secondary" id="themeBtn" style="width:auto">Toggle Theme</button>
+        <button class="secondary" id="exportBtn" style="width:auto">Export Backup</button>
+        <div id="authState" class="muted">Not logged in</div>
+      </div>
     </div>
 
-    <div class="dashboard" id="dashboard">
-        <div class="sidebar">
-            <div class="sidebar-logo">🏋️ Aura</div>
-            <nav>
-                <div class="nav-item active" data-section="overview">📊 Overview</div>
-                <div class="nav-item" data-section="clients">👥 Clients</div>
-                <div class="nav-item" data-section="appointments">📅 Appointments</div>
-                <div class="nav-item" data-section="progress">📈 Progress</div>
-                <div class="nav-item" data-section="programs">🎯 Programs</div>
-                <div class="nav-item" data-section="chat">💬 AI Chat</div>
-            </nav>
-        </div>
-
-        <div class="main-content">
-            <div class="header">
-                <h1 id="pageTitle">Dashboard</h1>
-                <div class="user-info">
-                    <span id="userName">Demo Professional</span>
-                    <div class="user-avatar" id="userAvatar">DP</div>
-                    <button class="btn btn-secondary" onclick="logout()">Logout</button>
-                </div>
-            </div>
-
-            <div class="section active" id="section-overview">
-                <div class="stats-grid">
-                    <div class="stat-card"><h3>Total Clients</h3><div class="value" id="statClients">0</div></div>
-                    <div class="stat-card"><h3>Appointments</h3><div class="value" id="statAppointments">0</div></div>
-                    <div class="stat-card"><h3>Revenue</h3><div class="value" id="statRevenue">$0</div></div>
-                    <div class="stat-card"><h3>Completion</h3><div class="value" id="statCompletion">0%</div></div>
-                </div>
-                <div class="quick-actions">
-                    <button class="quick-action-btn" onclick="showSection('clients');openModal('clientModal')">➕ Add Client</button>
-                    <button class="quick-action-btn" onclick="showSection('appointments');openModal('appointmentModal')">📅 New Appointment</button>
-                    <button class="quick-action-btn" onclick="showSection('chat')">💬 Start Chat</button>
-                </div>
-                <h2 style="margin-bottom:1rem">Recent Appointments</h2>
-                <div class="data-table"><table><thead><tr><th>Client</th><th>Date</th><th>Type</th><th>Status</th></tr></thead><tbody id="appointmentsTable"><tr><td colspan="4">Loading...</td></tr></tbody></table></div>
-            </div>
-
-            <div class="section" id="section-clients">
-                <div style="display:flex;justify-content:space-between;margin-bottom:1rem"><h2>Clients</h2><button class="btn btn-primary" onclick="openModal('clientModal')">➕ Add Client</button></div>
-                <div class="data-table"><table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Goals</th><th>Level</th><th>Status</th></tr></thead><tbody id="clientsTable"><tr><td colspan="6">Loading...</td></tr></tbody></table></div>
-            </div>
-
-            <div class="section" id="section-appointments">
-                <div style="display:flex;justify-content:space-between;margin-bottom:1rem"><h2>Appointments</h2><button class="btn btn-primary" onclick="openModal('appointmentModal')">📅 New Appointment</button></div>
-                <div class="data-table"><table><thead><tr><th>Client</th><th>Date</th><th>Time</th><th>Type</th><th>Status</th></tr></thead><tbody id="appointmentsFullTable"><tr><td colspan="5">Loading...</td></tr></tbody></table></div>
-            </div>
-
-            <div class="section" id="section-progress">
-                <h2>Progress Tracking</h2>
-                <div class="form-group" style="margin-top:1rem">
-                    <select id="progressClientSelect" onchange="loadProgress()"><option value="">Select Client</option></select>
-                </div>
-                <div id="progressData" class="data-table" style="margin-top:1rem;padding:1rem">Select a client</div>
-            </div>
-
-            <div class="section" id="section-programs">
-                <h2>Programs</h2>
-                <div class="data-table" style="margin-top:1rem"><table><thead><tr><th>Client</th><th>Program</th><th>Type</th><th>Duration</th><th>Status</th></tr></thead><tbody id="programsTable"><tr><td colspan="5">Loading...</td></tr></tbody></table></div>
-            </div>
-
-            <div class="section" id="section-chat">
-                <h2>AI Assistant</h2>
-                <p style="color:var(--gray);margin-bottom:1rem">Ask me anything about fitness!</p>
-                <div class="chat-container">
-                    <div class="chat-messages" id="chatMessages"><div class="chat-message"><div class="bubble">👋 Hi! I'm your AI fitness assistant!</div></div></div>
-                    <div class="chat-input">
-                        <input type="text" id="chatInput" placeholder="Type your message..." onkeypress="if(event.key==='Enter')sendMessage()">
-                        <button class="btn btn-primary" onclick="sendMessage()">Send</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="loginCard" class="card">
+      <h2>Sign In</h2>
+      <div class="row">
+        <input id="email" type="email" value="demo@aura.com" placeholder="Email" />
+        <input id="password" type="password" value="demo123" placeholder="Password" />
+      </div>
+      <div style="margin-top:0.75rem">
+        <button id="loginBtn">Login</button>
+      </div>
+      <div class="status" id="loginStatus"></div>
     </div>
 
-    <div class="modal" id="clientModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Add New Client</h2><button class="modal-close" onclick="closeModal('clientModal')">&times;</button></div>
-            <form id="clientForm">
-                <div class="form-group"><label>Name</label><input type="text" id="clientName" required></div>
-                <div class="form-group"><label>Email</label><input type="email" id="clientEmail" required></div>
-                <div class="form-group"><label>Phone</label><input type="tel" id="clientPhone"></div>
-                <div class="form-group"><label>Health Goals</label><input type="text" id="clientGoals" placeholder="lose weight, build muscle"></div>
-                <div class="form-group"><label>Fitness Level</label><select id="clientLevel"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div>
-                <button type="submit" class="btn btn-primary">Add Client</button>
-            </form>
+    <div id="app" class="hidden">
+      <div class="grid grid-4">
+        <div class="card"><div class="muted">Total Clients</div><div class="kpi" id="kpiClients">-</div></div>
+        <div class="card"><div class="muted">Active Clients</div><div class="kpi" id="kpiActive">-</div></div>
+        <div class="card"><div class="muted">Total Appointments</div><div class="kpi" id="kpiAppts">-</div></div>
+        <div class="card"><div class="muted">Completed Appointments</div><div class="kpi" id="kpiCompleted">-</div></div>
+      </div>
+      <div class="grid grid-4">
+        <div class="card"><div class="muted">Upcoming Appointments</div><div class="kpi" id="kpiUpcoming">-</div></div>
+        <div class="card"><div class="muted">Open Invoices</div><div class="kpi" id="kpiOverdue">-</div></div>
+        <div class="card"><div class="muted">Active Goals</div><div class="kpi" id="kpiGoals">-</div></div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h2>Create Client</h2>
+          <div class="grid">
+            <input id="cName" placeholder="Client name" />
+            <input id="cEmail" placeholder="Client email" />
+            <input id="cPhone" placeholder="Phone (optional)" />
+            <textarea id="cNeeds" placeholder="Client needs (comma separated)"></textarea>
+            <button id="createClientBtn">Create Client</button>
+            <div class="status" id="clientStatus"></div>
+          </div>
         </div>
-    </div>
 
-    <div class="modal" id="appointmentModal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>Schedule Appointment</h2><button class="modal-close" onclick="closeModal('appointmentModal')">&times;</button></div>
-            <form id="appointmentForm">
-                <div class="form-group"><label>Client</label><select id="appointmentClient" required><option value="">Select Client</option></select></div>
-                <div class="form-group"><label>Date</label><input type="date" id="appointmentDate" required></div>
-                <div class="form-group"><label>Time</label><input type="time" id="appointmentStart" required></div>
-                <div class="form-group"><label>Type</label><select id="appointmentType"><option value="session">Session</option><option value="consultation">Consultation</option><option value="assessment">Assessment</option></select></div>
-                <div class="form-group"><label>Notes</label><textarea id="appointmentNotes" rows="2"></textarea></div>
-                <button type="submit" class="btn btn-primary">Schedule</button>
-            </form>
+        <div class="card">
+          <h2>Create Appointment</h2>
+          <div class="grid">
+            <select id="aClient"></select>
+            <input id="aStart" type="datetime-local" />
+            <input id="aEnd" type="datetime-local" />
+            <input id="aType" placeholder="Type (consultation, support, audit...)" />
+            <textarea id="aNotes" placeholder="Notes"></textarea>
+            <button id="createApptBtn">Create Appointment</button>
+            <div class="status" id="apptStatus"></div>
+          </div>
         </div>
+      </div>
+
+      <div class="card">
+        <h2>Clients</h2>
+        <input id="clientSearch" placeholder="Search clients by name/email/needs" style="margin-bottom:0.7rem" />
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Needs</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="clientsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Appointments</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Client ID</th>
+                <th>Type</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="apptBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <h2>Service Notes (Progress)</h2>
+          <div class="grid">
+            <select id="pClient"></select>
+            <textarea id="pNotes" placeholder="Service delivery notes"></textarea>
+            <textarea id="pMetrics" placeholder='Metrics JSON, e.g. {"responseTimeMins": 45, "csat": 4.8}'></textarea>
+            <button id="createProgressBtn">Save Note</button>
+            <div class="status" id="progressStatus"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>AI Operations Assistant</h2>
+          <div class="chat-log" id="chatLog"></div>
+          <textarea id="chatInput" placeholder="Ask about operations, retention, scheduling, campaigns, or invoicing"></textarea>
+          <div class="row" style="margin-top:0.6rem">
+            <button id="chatBtn">Send</button>
+            <button class="secondary" id="refreshBtn">Refresh Dashboard</button>
+          </div>
+          <div class="status" id="chatStatus"></div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="toast" id="toast"></div>
+  <script>
+    const api = {
+      token: '',
+      base: '/api',
+      headers() {
+        return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+      },
+      async json(url, options = {}) {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
+        return data;
+      }
+    };
 
-    <script>
-        let token = localStorage.getItem('aura_token') || '';
-        let clients = [], appointments = [], programs = [];
-        const API = 'http://localhost:3000/api';
+    const el = (id) => document.getElementById(id);
 
-        if (token) showDashboard();
+    function setStatus(target, message, ok = false) {
+      const node = el(target);
+      node.textContent = message || '';
+      node.className = `status ${message ? (ok ? 'ok' : 'error') : ''}`;
+    }
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const res = await fetch(`${API}/auth/login`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value})
-                });
-                if (!res.ok) throw new Error('Login failed');
-                const data = await res.json();
-                token = data.token;
-                localStorage.setItem('aura_token', token);
-                showDashboard();
-                showToast('Welcome!', 'success');
-            } catch (err) { showToast('Login failed', 'error'); }
+    function fmt(dt) {
+      if (!dt) return '-';
+      const d = new Date(dt);
+      return Number.isNaN(d.getTime()) ? dt : d.toLocaleString();
+    }
+
+    async function login() {
+      setStatus('loginStatus', '');
+      try {
+        const data = await api.json(`${api.base}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: el('email').value.trim(),
+            password: el('password').value
+          })
         });
+        api.token = data.token;
+        el('authState').textContent = `Signed in as ${data.user.name} (${data.user.email})`;
+        el('loginCard').classList.add('hidden');
+        el('app').classList.remove('hidden');
+        setStatus('loginStatus', 'Login successful.', true);
+        await refreshAll();
+      } catch (err) {
+        setStatus('loginStatus', err.message);
+      }
+    }
 
-        function showDashboard() {
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-            loadDashboard();
-        }
+    async function refreshDashboard() {
+      const d = await api.json(`${api.base}/analytics/dashboard`, { headers: api.headers() });
+      el('kpiClients').textContent = d.totalClients ?? 0;
+      el('kpiActive').textContent = d.activeClients ?? 0;
+      el('kpiAppts').textContent = d.totalAppointments ?? 0;
+      el('kpiCompleted').textContent = d.completedAppointments ?? 0;
+      const s = await api.json(`${api.base}/system/summary`, { headers: api.headers() });
+      el('kpiUpcoming').textContent = s.upcomingAppointments ?? 0;
+      el('kpiOverdue').textContent = s.overdueInvoices ?? 0;
+      el('kpiGoals').textContent = s.activeGoals ?? 0;
+    }
 
-        function logout() {
-            token = ''; localStorage.removeItem('aura_token');
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('loginPage').style.display = 'flex';
-        }
+    function renderClientsTable(clients) {
+      el('clientsBody').innerHTML = clients.map(c => `
+        <tr>
+          <td>${c.name || '-'}</td>
+          <td>${c.email || '-'}</td>
+          <td>${c.phone || '-'}</td>
+          <td>${Array.isArray(c.healthGoals) ? c.healthGoals.join(', ') : '-'}</td>
+          <td>${c.status || '-'}</td>
+        </tr>
+      `).join('');
+    }
 
-        async function loadDashboard() {
-            await Promise.all([loadStats(), loadClients(), loadAppointments(), loadPrograms()]);
-        }
+    async function refreshClients() {
+      const clients = await api.json(`${api.base}/clients`, { headers: api.headers() });
+      cachedClients = clients;
+      renderClientsTable(clients);
 
-        async function loadStats() {
-            try {
-                const res = await fetch(`${API}/analytics/dashboard`, {headers: {'Authorization': `Bearer ${token}`}});
-                const data = await res.json();
-                document.getElementById('statClients').textContent = data.totalClients;
-                document.getElementById('statAppointments').textContent = data.totalAppointments;
-                document.getElementById('statRevenue').textContent = '$' + data.totalRevenue;
-                const c = data.totalAppointments > 0 ? Math.round((data.completedAppointments/data.totalAppointments)*100) : 0;
-                document.getElementById('statCompletion').textContent = c + '%';
-            } catch(e) { console.error(e); }
-        }
+      const opts = clients.map(c => `<option value="${c.id}">${c.name} (#${c.id})</option>`).join('');
+      el('aClient').innerHTML = opts;
+      el('pClient').innerHTML = opts;
+    }
 
-        async function loadClients() {
-            try {
-                const res = await fetch(`${API}/clients`, {headers: {'Authorization': `Bearer ${token}`}});
-                clients = await res.json();
-                document.getElementById('clientsTable').innerHTML = clients.map(c => `<tr><td>${c.name}</td><td>${c.email}</td><td>${c.phone||'-'}</td><td>${c.healthGoals?.join(', ')||'-'}</td><td>${c.fitnessLevel}</td><td><span class="badge badge-success">${c.status}</span></td></tr>`).join('');
-                document.getElementById('progressClientSelect').innerHTML = '<option value="">Select Client</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                document.getElementById('appointmentClient').innerHTML = '<option value="">Select Client</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            } catch(e) { console.error(e); }
-        }
+    async function refreshAppointments() {
+      const appts = await api.json(`${api.base}/appointments`, { headers: api.headers() });
+      el('apptBody').innerHTML = appts.map(a => `
+        <tr>
+          <td>${a.clientId}</td>
+          <td>${a.type || '-'}</td>
+          <td>${fmt(a.startTime)}</td>
+          <td>${fmt(a.endTime)}</td>
+          <td>${a.status || '-'}</td>
+          <td>${a.notes || '-'}</td>
+        </tr>
+      `).join('');
+    }
 
-        async function loadAppointments() {
-            try {
-                const res = await fetch(`${API}/appointments`, {headers: {'Authorization': `Bearer ${token}`}});
-                appointments = await res.json();
-                document.getElementById('appointmentsTable').innerHTML = appointments.slice(0,5).map(a => `<tr><td>Client ${a.clientId}</td><td>${new Date(a.startTime).toLocaleDateString()}</td><td>${a.type}</td><td><span class="badge badge-${a.status==='completed'?'success':a.status==='cancelled'?'warning':'warning'}">${a.status}</span></td></tr>`).join('');
-                document.getElementById('appointmentsFullTable').innerHTML = appointments.map(a => `<tr><td>Client ${a.clientId}</td><td>${new Date(a.startTime).toLocaleDateString()}</td><td>${new Date(a.startTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</td><td>${a.type}</td><td><span class="badge badge-${a.status==='completed'?'success':a.status==='cancelled'?'warning':'warning'}">${a.status}</span></td></tr>`).join('');
-            } catch(e) { console.error(e); }
-        }
+    async function refreshChatHistory() {
+      const history = await api.json(`${api.base}/chat/history`, { headers: api.headers() });
+      const latest = history.slice(-12);
+      el('chatLog').innerHTML = latest.map(msg => `
+        <div class="msg">
+          <b>${msg.role === 'assistant' ? 'Assistant' : 'You'}</b>
+          <div>${msg.content}</div>
+        </div>
+      `).join('');
+      el('chatLog').scrollTop = el('chatLog').scrollHeight;
+    }
 
-        async function loadPrograms() {
-            try {
-                const res = await fetch(`${API}/programs`, {headers: {'Authorization': `Bearer ${token}`}});
-                programs = await res.json();
-                document.getElementById('programsTable').innerHTML = programs.map(p => `<tr><td>Client ${p.clientId}</td><td>${p.name}</td><td>${p.type}</td><td>${p.duration} weeks</td><td><span class="badge badge-success">${p.status}</span></td></tr>`).join('');
-            } catch(e) { console.error(e); }
-        }
+    async function refreshAll() {
+      await Promise.all([refreshDashboard(), refreshClients(), refreshAppointments(), refreshChatHistory()]);
+    }
 
-        document.getElementById('clientForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const res = await fetch(`${API}/clients`, {
-                    method: 'POST', headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        name: document.getElementById('clientName').value,
-                        email: document.getElementById('clientEmail').value,
-                        phone: document.getElementById('clientPhone').value,
-                        healthGoals: document.getElementById('clientGoals').value.split(',').map(g=>g.trim()).filter(g=>g),
-                        fitnessLevel: document.getElementById('clientLevel').value
-                    })
-                });
-                if (res.ok) { closeModal('clientModal'); document.getElementById('clientForm').reset(); loadClients(); loadStats(); showToast('Client added!', 'success'); }
-            } catch(e) { showToast('Failed', 'error'); }
+    async function exportBackup() {
+      try {
+        const data = await api.json(`${api.base}/system/export`, { headers: api.headers() });
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fluxora-export-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        setStatus('chatStatus', err.message);
+      }
+    }
+
+    async function createClient() {
+      setStatus('clientStatus', '');
+      try {
+        await api.json(`${api.base}/clients`, {
+          method: 'POST',
+          headers: { ...api.headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: el('cName').value.trim(),
+            email: el('cEmail').value.trim(),
+            phone: el('cPhone').value.trim(),
+            healthGoals: el('cNeeds').value.split(',').map(s => s.trim()).filter(Boolean),
+            fitnessLevel: 'beginner'
+          })
         });
+        setStatus('clientStatus', 'Client created.', true);
+        await refreshClients();
+        await refreshDashboard();
+      } catch (err) {
+        setStatus('clientStatus', err.message);
+      }
+    }
 
-        document.getElementById('appointmentForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const date = document.getElementById('appointmentDate').value;
-            const time = document.getElementById('appointmentStart').value;
-            try {
-                const res = await fetch(`${API}/appointments`, {
-                    method: 'POST', headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        clientId: parseInt(document.getElementById('appointmentClient').value),
-                        startTime: new Date(`${date}T${time}`).toISOString(),
-                        endTime: new Date(new Date(`${date}T${time}`).getTime() + 3600000).toISOString(),
-                        type: document.getElementById('appointmentType').value,
-                        status: 'scheduled',
-                        notes: document.getElementById('appointmentNotes').value
-                    })
-                });
-                if (res.ok) { closeModal('appointmentModal'); document.getElementById('appointmentForm').reset(); loadAppointments(); loadStats(); showToast('Appointment scheduled!', 'success'); }
-            } catch(e) { showToast('Failed', 'error'); }
+    async function createAppointment() {
+      setStatus('apptStatus', '');
+      try {
+        await api.json(`${api.base}/appointments`, {
+          method: 'POST',
+          headers: { ...api.headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: Number(el('aClient').value),
+            startTime: new Date(el('aStart').value).toISOString(),
+            endTime: new Date(el('aEnd').value).toISOString(),
+            type: el('aType').value.trim() || 'service',
+            notes: el('aNotes').value.trim()
+          })
         });
+        setStatus('apptStatus', 'Appointment created.', true);
+        await refreshAppointments();
+        await refreshDashboard();
+      } catch (err) {
+        setStatus('apptStatus', err.message);
+      }
+    }
 
-        async function loadProgress() {
-            const clientId = document.getElementById('progressClientSelect').value;
-            if (!clientId) { document.getElementById('progressData').innerHTML = 'Select a client'; return; }
-            try {
-                const res = await fetch(`${API}/progress/${clientId}`, {headers: {'Authorization': `Bearer ${token}`}});
-                const data = await res.json();
-                if (data.length === 0) { document.getElementById('progressData').innerHTML = 'No progress data'; return; }
-                document.getElementById('progressData').innerHTML = data.map(p => `<div style="padding:0.5rem;border-bottom:1px solid var(--border)"><strong>${p.date}</strong>: ${p.weight}lbs, ${p.bodyFat}% body fat<br><small>${p.notes||'No notes'}</small></div>`).join('');
-            } catch(e) { document.getElementById('progressData').innerHTML = 'Error loading progress'; }
-        }
+    async function createProgress() {
+      setStatus('progressStatus', '');
+      try {
+        let measurements = {};
+        const raw = el('pMetrics').value.trim();
+        if (raw) measurements = JSON.parse(raw);
 
-        async function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const msg = input.value.trim();
-            if (!msg) return;
-            document.getElementById('chatMessages').innerHTML += `<div class="chat-message user"><div class="bubble">${msg}</div></div>`;
-            input.value = '';
-            try {
-                const res = await fetch(`${API}/chat`, {
-                    method: 'POST', headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
-                    body: JSON.stringify({clientId: 1, message: msg})
-                });
-                const data = await res.json();
-                document.getElementById('chatMessages').innerHTML += `<div class="chat-message"><div class="bubble">${data.message || 'Thank you for your question!'}</div></div>`;
-                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
-            } catch(e) { document.getElementById('chatMessages').innerHTML += `<div class="chat-message"><div class="bubble">Sorry, I had trouble responding.</div></div>`; }
-        }
-
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => { showSection(item.dataset.section); });
+        await api.json(`${api.base}/progress`, {
+          method: 'POST',
+          headers: { ...api.headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: Number(el('pClient').value),
+            date: new Date().toISOString().slice(0, 10),
+            measurements,
+            notes: el('pNotes').value.trim()
+          })
         });
+        setStatus('progressStatus', 'Service note saved.', true);
+      } catch (err) {
+        setStatus('progressStatus', err.message);
+      }
+    }
 
-        function showSection(section) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById('section-' + section).classList.add('active');
-            document.querySelector(`[data-section="${section}"]`).classList.add('active');
-            document.getElementById('pageTitle').textContent = section.charAt(0).toUpperCase() + section.slice(1);
-        }
+    async function sendChat() {
+      setStatus('chatStatus', '');
+      try {
+        const content = el('chatInput').value.trim();
+        if (!content) return;
+        await api.json(`${api.base}/chat`, {
+          method: 'POST',
+          headers: { ...api.headers(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        el('chatInput').value = '';
+        await refreshChatHistory();
+      } catch (err) {
+        setStatus('chatStatus', err.message);
+      }
+    }
 
-        function openModal(id) { document.getElementById(id).classList.add('active'); }
-        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-        function showToast(msg, type = '') {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.className = 'toast show ' + type;
-            setTimeout(() => t.classList.remove('show'), 3000);
-        }
-    </script>
+    el('loginBtn').addEventListener('click', login);
+    el('createClientBtn').addEventListener('click', createClient);
+    el('createApptBtn').addEventListener('click', createAppointment);
+    el('createProgressBtn').addEventListener('click', createProgress);
+    el('chatBtn').addEventListener('click', sendChat);
+    el('refreshBtn').addEventListener('click', refreshAll);
+    el('exportBtn').addEventListener('click', exportBackup);
+    el('themeBtn').addEventListener('click', () => document.body.classList.toggle('dark'));
+    el('clientSearch').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) return renderClientsTable(cachedClients);
+      const filtered = cachedClients.filter((c) => {
+        const needs = Array.isArray(c.healthGoals) ? c.healthGoals.join(' ') : '';
+        return [c.name, c.email, c.phone, needs].join(' ').toLowerCase().includes(q);
+      });
+      renderClientsTable(filtered);
+    });
+  </script>
 </body>
 </html>
+    let cachedClients = [];

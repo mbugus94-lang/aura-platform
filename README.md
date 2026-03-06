@@ -1,215 +1,58 @@
-# Aura Platform - AI-Powered Wellness Business Management
+# Fluxora - Service Business Management
 
-<p align="center">
-  <a href="https://github.com/mbugus94-lang/aura-platform/stargazers">
-    <img src="https://img.shields.io/github/stars/mbugus94-lang/aura-platform?style=social" alt="Stars">
-  </a>
-  <a href="https://github.com/mbugus94-lang/aura-platform/fork">
-    <img src="https://img.shields.io/github/forks/mbugus94-lang/aura-platform?style=social" alt="Forks">
-  </a>
-  <img src="https://img.shields.io/badge/Version-1.0.0-blue" alt="Version">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/Node.js-18+-yellow" alt="Node.js">
-</p>
+Fluxora is an open-source platform for running service businesses across verticals like consulting, agencies, clinics, training, and maintenance services.
 
-<p align="center">
-  <strong>🏋️ The open source alternative to Mindbody, Glofox, and Trainerize</strong><br>
-  <em>AI-powered wellness business management - completely FREE</em>
-</p>
+It ships with:
+- Client CRM
+- Appointment scheduling
+- Service delivery notes (progress tracking)
+- Program/work package management
+- Invoicing
+- Basic marketing workflows
+- AI operations assistant (mock responses)
 
----
+## Production-oriented updates in this build
+- Removed insecure demo password bypass
+- Added environment-based runtime config (`PORT`, `JWT_SECRET`, `APP_NAME`, `CORS_ORIGINS`)
+- Added auth route rate limiting
+- Added `system/summary` and `system/export` operational endpoints
+- Added UI enhancements: theme toggle, client search, one-click JSON backup export
+- Added `.env.example`
+- Updated UI and docs to be service-industry generic
 
-## 🎯 Why Aura Platform?
-
-| Feature | Aura Platform | Mindbody | Glofox | Trainerize |
-|---------|---------------|----------|--------|------------|
-| **Price** | 🆓 Free | $99/mo | $79/mo | $79/mo |
-| **AI Assistant** | ✅ Built-in | ❌ | ❌ | ❌ |
-| **Open Source** | ✅ | ❌ | ❌ | ❌ |
-| **Setup Time** | 2 min | 2 weeks | 1 week | 3 days |
-| **Self-Hosted** | ✅ | ❌ | ❌ | ❌ |
-
----
-
-## ✨ Features
-
-- 🤖 **AI Chat Assistant** - 24/7 AI-powered fitness & nutrition guidance
-- 👥 **Client Management** - Full CRM with health goals, measurements, notes
-- 📅 **Scheduling** - Appointment booking with calendar sync
-- 📈 **Progress Tracking** - Weight, body fat, measurements over time
-- 🎯 **Program Builder** - Create workout & nutrition programs
-- 📊 **Analytics Dashboard** - Revenue, retention, and performance metrics
-- 🔐 **Authentication** - JWT-based secure login system
-- 💾 **Database** - SQLite (no setup required, ships with sample data)
-
----
-
-## 🚀 Quick Start
-
-### Installation (2 minutes!)
-
+## Quick start
 ```bash
-# Clone the repository
-git clone https://github.com/mbugus94-lang/aura-platform.git
-cd aura-platform
-
-# Install dependencies
 npm install
-
-# Start the server
 npm run dev
 ```
 
-**Done!** Open http://localhost:3000 and login with:
-- 📧 Email: `demo@aura.com`
-- 🔑 Password: `demo123`
+Open `http://localhost:3000`.
 
----
+Demo credentials:
+- Email: `demo@aura.com`
+- Password: `demo123`
 
-## 📸 Screenshots
+## Environment configuration
+Copy `.env.example` values into your environment:
 
-### Login Page
-![Login](https://via.placeholder.com/800x400/667eea/ffffff?text=Aura+Login)
+- `NODE_ENV=development|production`
+- `PORT=3000`
+- `APP_NAME=Fluxora`
+- `JWT_SECRET=<strong secret in production>`
+- `CORS_ORIGINS=<comma-separated origins, optional>`
 
-### Dashboard
-![Dashboard](https://via.placeholder.com/800x400/10b981/ffffff?text=Dashboard+Overview)
+## API docs
+See [API.md](API.md).
 
-### AI Chat
-![Chat](https://via.placeholder.com/800x400/f59e0b/ffffff?text=AI+Chat+Assistant)
-
----
-
-## 🛠️ Tech Stack
-
-- **Backend:** Node.js, Express.js
-- **Database:** SQLite (better-sqlite3)
-- **Authentication:** JWT, bcrypt
-- **Frontend:** Vanilla JavaScript, HTML, CSS
-- **API:** RESTful JSON API
-
----
-
-## 📖 API Documentation
-
-```bash
-# Login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"demo@aura.com","password":"demo123"}'
-
-# Get Clients (use token from login)
-curl http://localhost:3000/api/clients \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# AI Chat
-curl -X POST http://localhost:3000/api/chat \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"message":"What should I eat before a workout?"}'
-```
-
-See [API.md](API.md) for full documentation.
-
----
-
-## 🎓 Use Cases
-
-### For Personal Trainers
-- Manage 20+ clients without spreadsheets
-- AI assistant answers client questions 24/7
-- Track progress automatically
-
-### For Yoga Studios
-- Simple scheduling system
-- Member management
-- Focus on teaching, not admin
-
-### For Fitness Startups
-- MVP for your business idea
-- Extend with your own features
-- Deploy anywhere
-
-### For Developers
-- Full-stack boilerplate
-- Learn Node.js & SQLite
-- Build your own fitness app
-
----
-
-## 🏆 Why Open Source?
-
-1. **No Vendor Lock-in** - Your data, your server, your rules
-2. **Free Forever** - No monthly fees, ever
-3. **Fully Customizable** - Change anything you want
-4. **Community Driven** - Built by developers, for developers
-
----
-
-## 📦 What's Included
-
+## Project structure
 ```
 aura-platform/
-├── public/
-│   └── index.html       # Beautiful web UI
-├── server/
-│   ├── index.js         # Express API server
-│   ├── db.js            # SQLite database
-│   └── aura.db          # Pre-loaded sample data
-├── test/
-│   └── demo.js          # API test suite
-├── README.md            # This file
-├── API.md               # Full API docs
-└── package.json         # Dependencies
+|-- public/index.html
+|-- server/index.js
+|-- server/db.js
+|-- test/demo.js
 ```
 
----
-
-## 🧪 Testing
-
-```bash
-# Run comprehensive API tests
-node test/demo.js
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create your feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE)
-
----
-
-## 🔮 Roadmap
-
-- [ ] User registration & roles
-- [ ] File uploads for client documents
-- [ ] Google Calendar integration
-- [ ] Email notifications
-- [ ] Payment processing (Stripe)
-- [ ] Mobile app (React Native)
-- [ ] Multi-language support
-
----
-
-## 💬 Connect
-
-- ⭐ Star this repo if you found it useful!
-- 🐛 Report bugs via GitHub Issues
-- 💡 Request features via GitHub Issues
-- 📢 Share with your network!
-
----
-
-<p align="center">
-  Built with ❤️ by <a href="https://github.com/mbugus94-lang">David Gakere</a>
-</p>
+## Notes
+- Database is SQLite and is created/seeded automatically.
+- Some legacy fitness-oriented endpoints/tables remain for backward compatibility, but the default product language and workflow are now service-industry focused.

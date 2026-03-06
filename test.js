@@ -12,7 +12,7 @@ async function testAPI() {
     console.log('1️⃣  Testing login...');
     const loginResponse = await axios.post(`${BASE_URL}/api/auth/login`, {
       email: 'demo@aura.com',
-      password: 'any-password'
+      password: 'demo123'
     });
     token = loginResponse.data.token;
     console.log('✅ Login successful!');
@@ -80,7 +80,7 @@ async function testAPI() {
     console.log('7️⃣  Testing AI chat...');
     const chatResponse2 = await axios.post(`${BASE_URL}/api/chat`, {
       clientId: 1,
-      content: 'How is my weight loss progress going?'
+      content: 'How can I improve client retention this quarter?'
     }, {
       headers: { Authorization: `Bearer ${token}` }
     });

@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 // Initialize database
 const dbPath = path.join(__dirname, 'aura.db');
@@ -23,6 +24,7 @@ function initDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
+      password TEXT,
       name TEXT NOT NULL,
       businessName TEXT,
       bio TEXT,
@@ -328,6 +330,24 @@ function initDatabase() {
     )
   `);
 
+  // Client documents table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS client_documents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientId INTEGER NOT NULL,
+      professionalId INTEGER NOT NULL,
+      fileName TEXT NOT NULL,
+      fileType TEXT,
+      fileSize INTEGER,
+      filePath TEXT NOT NULL,
+      category TEXT DEFAULT 'other',
+      notes TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (clientId) REFERENCES clients(id) ON DELETE CASCADE,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `);
+
   // Workout templates table
   db.run(`
     CREATE TABLE IF NOT EXISTS workout_templates (
@@ -354,9 +374,10 @@ function insertSampleData() {
 
   // Professional user
   const professionalId = 1;
+  const demoPasswordHash = '$2a$10$wS8XyQOaGj.S6.v8.m8Q.O8.m8Q.O8.m8Q.O8.m8Q.O8.m8Q.O'; // This is just a placeholder, I'll use a real one
   db.run(
-    `INSERT OR IGNORE INTO users (id, email, name, businessName, bio, role)
-     VALUES (1, 'demo@aura.com', 'Demo Professional', 'Aura Fitness', 'Professional fitness coach specializing in strength training and nutrition', 'professional')`,
+    `INSERT OR IGNORE INTO users (id, email, password, name, businessName, bio, role)
+     VALUES (1, 'demo@aura.com', '$2a$10$dRjdzCZ9UCkNnSkLKIZuZ.eIDNX90wp4fm0Vd9A70iv/8EH6/KpDS', 'Demo Professional', 'Aura Services', 'Service business operator focused on client experience and delivery quality', 'professional')`,
     [],
     function(err) {
       if (err) console.error('Error inserting user:', err.message);

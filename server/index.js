@@ -3,20 +3,80 @@ const cors = require('cors');
 const helmet = require('helmet');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const db = require('./db');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'aura-demo-secret-key-change-in-production';
+const PORT = Number(process.env.PORT) || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'aura-demo-secret-key-change-in-production';
+const APP_NAME = process.env.APP_NAME || 'Fluxora';
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'aura-demo-secret-key-change-in-production') {
+  console.warn('[SECURITY] JWT_SECRET is using the default value. Set JWT_SECRET in production.');
+}
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  },
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  crossOriginResourcePolicy: false, // Allow loading images from our server
+}));
+app.use(cors({
+  origin: CORS_ORIGINS.length ? CORS_ORIGINS : true,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static frontend
+// Simple in-memory rate limiter for auth routes
+const authRateMap = new Map();
+function authRateLimit(req, res, next) {
+  const key = `${req.ip}:auth`;
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const maxAttempts = 25;
+  const bucket = authRateMap.get(key) || { start: now, count: 0 };
+  if (now - bucket.start > windowMs) {
+    bucket.start = now;
+    bucket.count = 0;
+  }
+  bucket.count += 1;
+  authRateMap.set(key, bucket);
+  if (bucket.count > maxAttempts) {
+    return res.status(429).json({ error: 'Too many auth attempts. Please try again later.' });
+  }
+  return next();
+}
+
+// Serve static frontend and uploads
 app.use(express.static('public'));
+app.use('/uploads', express.static(uploadDir));
 
 // Authentication middleware
 function authenticateToken(req, res, next) {
@@ -35,8 +95,9 @@ function authenticateToken(req, res, next) {
 // Routes
 app.get('/', (req, res) => {
   res.json({
-    message: 'Aura Platform API',
+    message: `${APP_NAME} API`,
     version: '1.0.0',
+    vertical: 'service-industry',
     endpoints: {
       auth: '/api/auth/*',
       clients: '/api/clients/*',
@@ -55,11 +116,13 @@ app.get('/api/health', (req, res) => {
 });
 
 // Auth routes
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
-    // For demo, we accept any password if email exists
     const user = await new Promise((resolve, reject) => {
       db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
         if (err) reject(err);
@@ -69,6 +132,12 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Generate token
@@ -95,7 +164,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
     const { email, name, password, businessName, bio } = req.body;
 
@@ -538,18 +607,16 @@ app.get('/api/chat/history', authenticateToken, async (req, res) => {
 function generateAIResponse(content, history) {
   const lowerContent = content.toLowerCase();
 
-  if (lowerContent.includes('weight') || lowerContent.includes('weight loss')) {
-    return "Based on your progress tracking, you're making great progress! Keep up the cardio and strength training routine. I recommend focusing on a calorie deficit of 500 calories per day for optimal results.";
-  } else if (lowerContent.includes('yoga') || lowerContent.includes('flexibility')) {
-    return "Yoga is excellent for flexibility and balance. I recommend starting with sun salutations to warm up, then working on standing poses for balance, and finishing with restorative poses to relax. Consistency is key!";
-  } else if (lowerContent.includes('strength') || lowerContent.includes('muscle')) {
-    return "For muscle building, focus on progressive overload - gradually increase the weight or reps over time. Make sure you're getting enough protein (1.6-2.2g per kg of body weight) and getting adequate rest between workouts.";
-  } else if (lowerContent.includes('nutrition') || lowerContent.includes('diet')) {
-    return "A balanced diet is crucial for your fitness goals. Focus on whole foods, lean proteins, complex carbohydrates, and healthy fats. Stay hydrated and avoid processed foods and excessive sugar.";
-  } else if (lowerContent.includes('posture') || lowerContent.includes('back pain')) {
-    return "For posture correction, practice shoulder blade retractions, engage your core, and avoid slouching. I've created a specific program for you that includes exercises to strengthen your core and improve your posture throughout the day.";
+  if (lowerContent.includes('invoice') || lowerContent.includes('payment') || lowerContent.includes('cashflow')) {
+    return "I can help optimize your billing workflow. Start by grouping unpaid invoices by age, then automate reminders at fixed intervals and flag high-risk accounts for personal follow-up.";
+  } else if (lowerContent.includes('booking') || lowerContent.includes('appointment') || lowerContent.includes('schedule')) {
+    return "For better schedule performance, reserve buffer slots, cluster similar services, and confirm appointments 24 hours before start time to reduce no-shows.";
+  } else if (lowerContent.includes('client') || lowerContent.includes('customer') || lowerContent.includes('retention')) {
+    return "A strong retention loop is: clear onboarding, visible milestones, proactive check-ins, and a simple re-engagement offer for inactive clients.";
+  } else if (lowerContent.includes('marketing') || lowerContent.includes('campaign') || lowerContent.includes('lead')) {
+    return "Use one campaign per audience segment, one offer per message, and track open, click, and conversion rates so you can improve copy and targeting every cycle.";
   } else {
-    return "I'd be happy to help with that! Based on your goals and current progress, here's what I recommend: Focus on consistency and listen to your body. Small, consistent efforts lead to big results over time. Let me know if you need more specific advice!";
+    return "I can help with operations, scheduling, client management, invoicing, marketing, and service delivery. Share your objective and constraints, and I will propose a practical action plan.";
   }
 }
 
@@ -584,6 +651,108 @@ app.get('/api/analytics/dashboard', authenticateToken, async (req, res) => {
       totalRevenue,
       avgRevenuePerClient: clients.length > 0 ? totalRevenue / clients.length : 0,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// DOCUMENT UPLOAD ROUTES
+// ============================================================================
+
+// Upload a document for a client
+app.post('/api/uploads/document/:clientId', authenticateToken, upload.single('document'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const { category, notes } = req.body;
+    const { clientId } = req.params;
+
+    const result = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO client_documents (clientId, professionalId, fileName, fileType, fileSize, filePath, category, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          clientId,
+          req.user.id,
+          req.file.originalname,
+          req.file.mimetype,
+          req.file.size,
+          `/uploads/${req.file.filename}`,
+          category || 'other',
+          notes || '',
+        ],
+        function(err) {
+          if (err) reject(err);
+          else resolve(this);
+        }
+      );
+    });
+
+    const document = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM client_documents WHERE id = ?', [result.lastID], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    res.status(201).json(document);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all documents for a client
+app.get('/api/documents/:clientId', authenticateToken, async (req, res) => {
+  try {
+    const documents = await new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM client_documents WHERE clientId = ? AND professionalId = ? ORDER BY createdAt DESC',
+        [req.params.clientId, req.user.id],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    });
+
+    res.json(documents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a document
+app.delete('/api/documents/:id', authenticateToken, async (req, res) => {
+  try {
+    const doc = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM client_documents WHERE id = ? AND professionalId = ?', [req.params.id, req.user.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    // Delete file from filesystem
+    const fullPath = path.join(__dirname, doc.filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    // Delete from database
+    await new Promise((resolve, reject) => {
+      db.run('DELETE FROM client_documents WHERE id = ?', [req.params.id], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({ message: 'Document deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1301,8 +1470,76 @@ app.post('/api/marketing/:id/send', authenticateToken, async (req, res) => {
 // ============================================================================
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Aura Platform API running on http://localhost:${PORT}`);
+  console.log(`\n🚀 ${APP_NAME} API running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/`);
   console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
-  console.log(`\n📝 Sample login credentials:\n   Email: demo@aura.com\n   Password: (any password)\n`);
+  console.log(`\n📝 Sample login credentials:\n   Email: demo@aura.com\n   Password: demo123\n`);
+});
+
+// Operational summary
+app.get('/api/system/summary', authenticateToken, async (req, res) => {
+  try {
+    const [upcomingAppointments, overdueInvoices, activeGoals] = await Promise.all([
+      new Promise((resolve, reject) => {
+        db.get(
+          `SELECT COUNT(*) as count FROM appointments
+           WHERE professionalId = ? AND datetime(startTime) >= datetime('now') AND status = 'scheduled'`,
+          [req.user.id],
+          (err, row) => (err ? reject(err) : resolve(row?.count || 0))
+        );
+      }),
+      new Promise((resolve, reject) => {
+        db.get(
+          `SELECT COUNT(*) as count FROM invoices
+           WHERE professionalId = ? AND status IN ('pending', 'overdue')`,
+          [req.user.id],
+          (err, row) => (err ? reject(err) : resolve(row?.count || 0))
+        );
+      }),
+      new Promise((resolve, reject) => {
+        db.get(
+          `SELECT COUNT(*) as count FROM goals
+           WHERE professionalId = ? AND status = 'active'`,
+          [req.user.id],
+          (err, row) => (err ? reject(err) : resolve(row?.count || 0))
+        );
+      }),
+    ]);
+
+    res.json({ upcomingAppointments, overdueInvoices, activeGoals });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Data export for portability and backup
+app.get('/api/system/export', authenticateToken, async (req, res) => {
+  try {
+    const queries = {
+      clients: 'SELECT * FROM clients WHERE professionalId = ? ORDER BY createdAt DESC',
+      appointments: 'SELECT * FROM appointments WHERE professionalId = ? ORDER BY startTime DESC',
+      programs: 'SELECT * FROM programs WHERE professionalId = ? ORDER BY createdAt DESC',
+      invoices: 'SELECT * FROM invoices WHERE professionalId = ? ORDER BY createdAt DESC',
+      goals: 'SELECT * FROM goals WHERE professionalId = ? ORDER BY createdAt DESC',
+      attendance: 'SELECT * FROM attendance WHERE professionalId = ? ORDER BY checkInTime DESC',
+      marketing: 'SELECT * FROM marketing_campaigns WHERE professionalId = ? ORDER BY createdAt DESC',
+      notifications: 'SELECT * FROM notification_logs WHERE clientId IN (SELECT id FROM clients WHERE professionalId = ?) ORDER BY createdAt DESC',
+    };
+
+    const result = {};
+    for (const [key, sql] of Object.entries(queries)) {
+      result[key] = await new Promise((resolve, reject) => {
+        db.all(sql, [req.user.id], (err, rows) => (err ? reject(err) : resolve(rows)));
+      });
+    }
+
+    res.json({
+      app: APP_NAME,
+      exportedAt: new Date().toISOString(),
+      professionalId: req.user.id,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });

@@ -1,7 +1,7 @@
 {
-  "name": "aura-app-demo",
+  "name": "fluxora-service-os",
   "version": "1.0.0",
-  "description": "Aura Platform - AI-Powered Wellness Business Management",
+  "description": "Fluxora - AI-powered service business management",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "node server/index.js",
     "test": "node test/demo.js"
   },
-  "keywords": ["wellness", "fitness", "business", "management", "ai", "trpc"],
+  "keywords": ["service", "crm", "scheduling", "invoicing", "business", "management", "ai"],
   "author": "Aura Team",
   "license": "MIT",
   "dependencies": {
