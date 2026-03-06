@@ -199,7 +199,7 @@ async function testAnalytics() {
   console.log(`   - Total Appointments: ${dashboard.totalAppointments}`);
   console.log(`   - Completed Appointments: ${dashboard.completedAppointments}`);
   console.log(`   - Total Revenue: $${dashboard.totalRevenue}`);
-  console.log(`   - Client Retention: ${dashboard.clientRetention}%`);
+  console.log(`   - Client Retention: ${dashboard.clientRetention !== undefined ? dashboard.clientRetention : 0}%`);
 }
 
 async function main() {

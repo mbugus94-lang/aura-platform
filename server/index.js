@@ -461,7 +461,8 @@ app.post('/api/programs', authenticateToken, async (req, res) => {
 // Chat routes
 app.post('/api/chat', authenticateToken, async (req, res) => {
   try {
-    const { clientId, content } = req.body;
+    const { clientId, message, content: bodyContent } = req.body;
+    const content = message || bodyContent;
 
     // Store user message
     await new Promise((resolve, reject) => {
@@ -536,6 +537,7 @@ app.get('/api/chat/history', authenticateToken, async (req, res) => {
 
 // AI response generator (mock)
 function generateAIResponse(content, history) {
+  if (!content) return "I'm sorry, I didn't receive a message.";
   const lowerContent = content.toLowerCase();
 
   if (lowerContent.includes('weight') || lowerContent.includes('weight loss')) {
@@ -575,14 +577,19 @@ app.get('/api/analytics/dashboard', authenticateToken, async (req, res) => {
 
     const totalRevenue = 0; // Simplified for demo
 
+    const totalClients = clients.length;
+    const activeClients = clients.filter(c => c.status === 'active').length;
+    const clientRetention = totalClients > 0 ? Math.round((activeClients / totalClients) * 100) : 100;
+
     res.json({
-      totalClients: clients.length,
-      activeClients: clients.filter(c => c.status === 'active').length,
+      totalClients,
+      activeClients,
       totalAppointments: appointments.length,
       completedAppointments,
       scheduledAppointments,
       totalRevenue,
-      avgRevenuePerClient: clients.length > 0 ? totalRevenue / clients.length : 0,
+      avgRevenuePerClient: totalClients > 0 ? totalRevenue / totalClients : 0,
+      clientRetention,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
