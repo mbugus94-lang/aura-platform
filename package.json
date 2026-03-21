@@ -1,5 +1,5 @@
 {
-  "name": "aura-app-demo",
+  "name": "aura-platform",
   "version": "1.0.0",
   "description": "Aura Platform - AI-Powered Wellness Business Management",
   "main": "server/index.js",
@@ -7,11 +7,21 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node test/demo.js"
+    "test": "jest",
+    "lint": "eslint . --ext .js --ignore-pattern node_modules/",
+    "prepare": "npm run test"
   },
-  "keywords": ["wellness", "fitness", "business", "management", "ai", "trpc"],
+  "keywords": ["wellness", "fitness", "business", "management", "ai"],
   "author": "Aura Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mbugus94-lang/aura-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mbugus94-lang/aura-platform/issues"
+  },
+  "homepage": "https://github.com/mbugus94-lang/aura-platform#readme",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -21,11 +31,14 @@
     "helmet": "^8.1.0",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
-    "sqlite3": "^6.0.1",
+    "better-sqlite3": "^11.0.0",
     "uuid": "^13.0.0",
     "multer": "^2.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "eslint": "^8.57.0"
   }
 }
