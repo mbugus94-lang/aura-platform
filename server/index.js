@@ -6,8 +6,13 @@ const jwt = require('jsonwebtoken');
 const db = require('./db');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'aura-demo-secret-key-change-in-production';
+const PORT = Number(process.env.PORT) || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'aura-demo-secret-key-change-in-production';
+
+// Security warning for production
+if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'aura-demo-secret-key-change-in-production') {
+  console.warn('[SECURITY] JWT_SECRET is using the default value. Set JWT_SECRET in production.');
+}
 
 // Middleware
 app.use(helmet());
