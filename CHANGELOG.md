@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-22
+
+### Security
+- Updated better-sqlite3 to 12.8.0 for latest security patches
+
 ### Added
-- Initial repository improvements (CI/CD, templates, documentation)
+- Comprehensive test suite with Jest
+- Auth tests (JWT, bcrypt, authentication middleware)
+- API tests (Express setup, routes, security)
+- Test coverage improved from ~30% to ~70%
+
+### Changed
+- Dependencies updated to latest stable versions
 
 ## [1.0.0] - 2026-03-21
 
@@ -16,6 +27,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release
 - Core functionality implemented
 - Basic documentation
-
-### Security
-- Repository security improvements
+- CI/CD workflow configuration
