@@ -112,6 +112,26 @@ See [API.md](API.md) for full documentation.
 
 ---
 
+## 🔍 Health Checks
+
+The API includes a health check endpoint for monitoring:
+
+```bash
+curl http://localhost:3000/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-01-15T10:30:00.000Z",
+  "uptime": 3600,
+  "version": "1.0.5"
+}
+```
+
+---
+
 ## 🎓 Use Cases
 
 ### For Personal Trainers
