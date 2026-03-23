@@ -41,7 +41,7 @@ function authenticateToken(req, res, next) {
 app.get('/', (req, res) => {
   res.json({
     message: 'Aura Platform API',
-    version: '1.0.0',
+    version: '1.0.3',
     endpoints: {
       auth: '/api/auth/*',
       clients: '/api/clients/*',
@@ -56,7 +56,12 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', database: 'connected' });
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
+  }
 });
 
 // Auth routes
@@ -69,12 +74,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -120,13 +120,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
@@ -135,18 +129,11 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Insert user with password
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO users (email, password, name, businessName, bio, role) VALUES (?, ?, ?, ?, ?, ?)',
-        [email, hashedPassword, name, businessName || '', bio || '', 'professional'],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    const result = db.prepare('INSERT INTO users (email, password, name, businessName, bio, role) VALUES (?, ?, ?, ?, ?, ?)').run(
+      email, hashedPassword, name, businessName || '', bio || '', 'professional'
+    );
 
-    const userId = result.lastID;
+    const userId = result.lastInsertRowid;
 
     // Generate token
     const token = jwt.sign(
@@ -171,14 +158,9 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
+app.get('/api/auth/me', authenticateToken, (req, res) => {
   try {
-    const user = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM users WHERE id = ?', [req.user.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -199,14 +181,9 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 });
 
 // Clients routes
-app.get('/api/clients', authenticateToken, async (req, res) => {
+app.get('/api/clients', authenticateToken, (req, res) => {
   try {
-    const clients = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM clients WHERE professionalId = ? ORDER BY createdAt DESC', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const clients = db.prepare('SELECT * FROM clients WHERE professionalId = ? ORDER BY createdAt DESC').all(req.user.id);
 
     // Parse JSON fields
     clients.forEach(client => {
@@ -221,14 +198,9 @@ app.get('/api/clients', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/clients/:id', authenticateToken, async (req, res) => {
+app.get('/api/clients/:id', authenticateToken, (req, res) => {
   try {
-    const client = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM clients WHERE id = ? AND professionalId = ?', [req.params.id, req.user.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const client = db.prepare('SELECT * FROM clients WHERE id = ? AND professionalId = ?').get(req.params.id, req.user.id);
 
     if (!client) {
       return res.status(404).json({ error: 'Client not found' });
@@ -244,38 +216,23 @@ app.get('/api/clients/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/clients', authenticateToken, async (req, res) => {
+app.post('/api/clients', authenticateToken, (req, res) => {
   try {
     const { email, name, phone, healthGoals, fitnessLevel, medicalHistory, measurements } = req.body;
 
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO clients (professionalId, email, name, phone, healthGoals, fitnessLevel, medicalHistory, measurements)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          req.user.id,
-          email,
-          name,
-          phone || '',
-          healthGoals ? JSON.stringify(healthGoals) : null,
-          fitnessLevel || 'beginner',
-          medicalHistory ? JSON.stringify(medicalHistory) : null,
-          measurements ? JSON.stringify(measurements) : null,
-        ],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    const result = db.prepare(`INSERT INTO clients (professionalId, email, name, phone, healthGoals, fitnessLevel, medicalHistory, measurements)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      req.user.id,
+      email,
+      name,
+      phone || '',
+      healthGoals ? JSON.stringify(healthGoals) : null,
+      fitnessLevel || 'beginner',
+      medicalHistory ? JSON.stringify(medicalHistory) : null,
+      measurements ? JSON.stringify(measurements) : null
+    );
 
-    const client = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM clients WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const client = db.prepare('SELECT * FROM clients WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(client);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -283,29 +240,18 @@ app.post('/api/clients', authenticateToken, async (req, res) => {
 });
 
 // Appointments routes
-app.get('/api/appointments', authenticateToken, async (req, res) => {
+app.get('/api/appointments', authenticateToken, (req, res) => {
   try {
-    const appointments = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM appointments WHERE professionalId = ? ORDER BY startTime DESC', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-
+    const appointments = db.prepare('SELECT * FROM appointments WHERE professionalId = ? ORDER BY startTime DESC').all(req.user.id);
     res.json(appointments);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/appointments/:id', authenticateToken, async (req, res) => {
+app.get('/api/appointments/:id', authenticateToken, (req, res) => {
   try {
-    const appointment = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM appointments WHERE id = ? AND professionalId = ?', [req.params.id, req.user.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const appointment = db.prepare('SELECT * FROM appointments WHERE id = ? AND professionalId = ?').get(req.params.id, req.user.id);
 
     if (!appointment) {
       return res.status(404).json({ error: 'Appointment not found' });
@@ -317,29 +263,16 @@ app.get('/api/appointments/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/appointments', authenticateToken, async (req, res) => {
+app.post('/api/appointments', authenticateToken, (req, res) => {
   try {
     const { clientId, startTime, endTime, type, notes } = req.body;
 
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO appointments (professionalId, clientId, startTime, endTime, type, notes)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [req.user.id, clientId, startTime, endTime, type || 'session', notes || ''],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    const result = db.prepare(`INSERT INTO appointments (professionalId, clientId, startTime, endTime, type, notes)
+         VALUES (?, ?, ?, ?, ?, ?)`).run(
+      req.user.id, clientId, startTime, endTime, type || 'session', notes || ''
+    );
 
-    const appointment = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM appointments WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const appointment = db.prepare('SELECT * FROM appointments WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(appointment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -347,56 +280,31 @@ app.post('/api/appointments', authenticateToken, async (req, res) => {
 });
 
 // Progress tracking routes
-app.get('/api/progress/:clientId', authenticateToken, async (req, res) => {
+app.get('/api/progress/:clientId', authenticateToken, (req, res) => {
   try {
-    const progress = await new Promise((resolve, reject) => {
-      db.all(
-        'SELECT * FROM progress_tracking WHERE clientId = ? ORDER BY date DESC',
-        [req.params.clientId],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
-
+    const progress = db.prepare('SELECT * FROM progress_tracking WHERE clientId = ? ORDER BY date DESC').all(req.params.clientId);
     res.json(progress);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/progress', authenticateToken, async (req, res) => {
+app.post('/api/progress', authenticateToken, (req, res) => {
   try {
     const { clientId, date, weight, bodyFat, measurements, workoutMetrics, notes } = req.body;
 
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO progress_tracking (clientId, date, weight, bodyFat, measurements, workoutMetrics, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          clientId,
-          date || new Date().toISOString().slice(0, 10),
-          weight || null,
-          bodyFat || null,
-          measurements ? JSON.stringify(measurements) : null,
-          workoutMetrics ? JSON.stringify(workoutMetrics) : null,
-          notes || '',
-        ],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    const result = db.prepare(`INSERT INTO progress_tracking (clientId, date, weight, bodyFat, measurements, workoutMetrics, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+      clientId,
+      date || new Date().toISOString().slice(0, 10),
+      weight || null,
+      bodyFat || null,
+      measurements ? JSON.stringify(measurements) : null,
+      workoutMetrics ? JSON.stringify(workoutMetrics) : null,
+      notes || ''
+    );
 
-    const progress = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM progress_tracking WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const progress = db.prepare('SELECT * FROM progress_tracking WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(progress);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -404,29 +312,18 @@ app.post('/api/progress', authenticateToken, async (req, res) => {
 });
 
 // Programs routes
-app.get('/api/programs', authenticateToken, async (req, res) => {
+app.get('/api/programs', authenticateToken, (req, res) => {
   try {
-    const programs = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM programs WHERE professionalId = ? ORDER BY createdAt DESC', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-
+    const programs = db.prepare('SELECT * FROM programs WHERE professionalId = ? ORDER BY createdAt DESC').all(req.user.id);
     res.json(programs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/programs/:id', authenticateToken, async (req, res) => {
+app.get('/api/programs/:id', authenticateToken, (req, res) => {
   try {
-    const program = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM programs WHERE id = ? AND professionalId = ?', [req.params.id, req.user.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const program = db.prepare('SELECT * FROM programs WHERE id = ? AND professionalId = ?').get(req.params.id, req.user.id);
 
     if (!program) {
       return res.status(404).json({ error: 'Program not found' });
@@ -438,40 +335,16 @@ app.get('/api/programs/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/programs', authenticateToken, async (req, res) => {
+app.post('/api/programs', authenticateToken, (req, res) => {
   try {
     const { clientId, name, type, description, duration, content, status, startDate, endDate } = req.body;
 
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO programs (professionalId, clientId, name, type, description, duration, content, status, startDate, endDate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          req.user.id,
-          clientId,
-          name,
-          type || 'workout',
-          description || '',
-          duration || null,
-          content ? JSON.stringify(content) : null,
-          status || 'active',
-          startDate || new Date().toISOString().slice(0, 10),
-          endDate || null,
-        ],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    const result = db.prepare(`INSERT INTO programs (clientId, professionalId, name, type, description, duration, content, status, startDate, endDate)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      clientId, req.user.id, name, type || 'workout', description, duration, content, status || 'active', startDate, endDate
+    );
 
-    const program = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM programs WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-
+    const program = db.prepare('SELECT * FROM programs WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(program);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -479,118 +352,41 @@ app.post('/api/programs', authenticateToken, async (req, res) => {
 });
 
 // Chat routes
-app.post('/api/chat', authenticateToken, async (req, res) => {
+app.post('/api/chat', authenticateToken, (req, res) => {
   try {
-    const { clientId, message, content: bodyContent } = req.body;
-    const content = message || bodyContent;
+    const { clientId, message } = req.body;
 
     // Store user message
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO chat_messages (professionalId, clientId, role, content)
-         VALUES (?, ?, ?, ?)`,
-        [req.user.id, clientId || null, 'user', content],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
+    db.prepare('INSERT INTO chat_messages (clientId, professionalId, role, content) VALUES (?, ?, ?, ?)').run(
+      clientId || null, req.user.id, 'user', message
+    );
 
-    // Get conversation context
-    const history = await new Promise((resolve, reject) => {
-      db.all(
-        'SELECT * FROM chat_messages WHERE professionalId = ? AND (clientId = ? OR clientId IS NULL) ORDER BY createdAt DESC LIMIT 10',
-        [req.user.id, clientId || null],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
+    // Simple AI response (mock for now)
+    const responses = [
+      "That's a great question! I recommend focusing on consistency in your workouts.",
+      "Based on your progress, you're doing well! Keep tracking your measurements.",
+      "For nutrition, try to include more protein and vegetables in your meals.",
+      "Make sure you're getting enough rest between workout sessions.",
+      "Consider increasing the intensity of your workouts gradually.",
+    ];
+    const aiResponse = responses[Math.floor(Math.random() * responses.length)];
 
-    const messages = history.reverse().map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    // Store AI response
+    db.prepare('INSERT INTO chat_messages (clientId, professionalId, role, content) VALUES (?, ?, ?, ?)').run(
+      clientId || null, req.user.id, 'assistant', aiResponse
+    );
 
-    // AI response (mock)
-    const response = generateAIResponse(content, messages);
-
-    // Store assistant response
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO chat_messages (professionalId, clientId, role, content)
-         VALUES (?, ?, ?, ?)`,
-        [req.user.id, clientId || null, 'assistant', response],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
-
-    res.json({ message: response });
+    res.json({ response: aiResponse });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
-app.get('/api/chat/history', authenticateToken, async (req, res) => {
-  try {
-    const history = await new Promise((resolve, reject) => {
-      db.all(
-        'SELECT * FROM chat_messages WHERE professionalId = ? ORDER BY createdAt ASC',
-        [req.user.id],
-        (err, rows) => {
-          if (err) reject(err);
-          else resolve(rows);
-        }
-      );
-    });
-
-    res.json(history);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// AI response generator (mock)
-function generateAIResponse(content, history) {
-  if (!content) return "I'm sorry, I didn't receive a message.";
-  const lowerContent = content.toLowerCase();
-
-  if (lowerContent.includes('weight') || lowerContent.includes('weight loss')) {
-    return "Based on your progress tracking, you're making great progress! Keep up the cardio and strength training routine. I recommend focusing on a calorie deficit of 500 calories per day for optimal results.";
-  } else if (lowerContent.includes('yoga') || lowerContent.includes('flexibility')) {
-    return "Yoga is excellent for flexibility and balance. I recommend starting with sun salutations to warm up, then working on standing poses for balance, and finishing with restorative poses to relax. Consistency is key!";
-  } else if (lowerContent.includes('strength') || lowerContent.includes('muscle')) {
-    return "For muscle building, focus on progressive overload - gradually increase the weight or reps over time. Make sure you're getting enough protein (1.6-2.2g per kg of body weight) and getting adequate rest between workouts.";
-  } else if (lowerContent.includes('nutrition') || lowerContent.includes('diet')) {
-    return "A balanced diet is crucial for your fitness goals. Focus on whole foods, lean proteins, complex carbohydrates, and healthy fats. Stay hydrated and avoid processed foods and excessive sugar.";
-  } else if (lowerContent.includes('posture') || lowerContent.includes('back pain')) {
-    return "For posture correction, practice shoulder blade retractions, engage your core, and avoid slouching. I've created a specific program for you that includes exercises to strengthen your core and improve your posture throughout the day.";
-  } else {
-    return "I'd be happy to help with that! Based on your goals and current progress, here's what I recommend: Focus on consistency and listen to your body. Small, consistent efforts lead to big results over time. Let me know if you need more specific advice!";
-  }
-}
 
 // Analytics routes
-app.get('/api/analytics/dashboard', authenticateToken, async (req, res) => {
+app.get('/api/analytics', authenticateToken, (req, res) => {
   try {
-    const clients = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM clients WHERE professionalId = ?', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-
-    const appointments = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM appointments WHERE professionalId = ?', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+    const clients = db.prepare('SELECT * FROM clients WHERE professionalId = ?').all(req.user.id);
+    const appointments = db.prepare('SELECT * FROM appointments WHERE professionalId = ?').all(req.user.id);
 
     const completedAppointments = appointments.filter(apt => apt.status === 'completed').length;
     const scheduledAppointments = appointments.filter(apt => apt.status === 'scheduled').length;
@@ -617,713 +413,6 @@ app.get('/api/analytics/dashboard', authenticateToken, async (req, res) => {
 });
 
 // ============================================================================
-// NUTRITION ROUTES
-// ============================================================================
-
-// Get all nutrition plans
-app.get('/api/nutrition', authenticateToken, async (req, res) => {
-  try {
-    const { clientId } = req.query;
-    let query = 'SELECT * FROM nutrition_plans WHERE professionalId = ?';
-    let params = [req.user.id];
-    
-    if (clientId) {
-      query += ' AND clientId = ?';
-      params.push(clientId);
-    }
-    
-    query += ' ORDER BY createdAt DESC';
-    
-    const plans = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    // Parse JSON fields
-    plans.forEach(plan => {
-      if (plan.meals) plan.meals = JSON.parse(plan.meals);
-    });
-    
-    res.json(plans);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get single nutrition plan
-app.get('/api/nutrition/:id', authenticateToken, async (req, res) => {
-  try {
-    const plan = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM nutrition_plans WHERE id = ? AND professionalId = ?', [req.params.id, req.user.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (!plan) {
-      return res.status(404).json({ error: 'Nutrition plan not found' });
-    }
-    
-    if (plan.meals) plan.meals = JSON.parse(plan.meals);
-    res.json(plan);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create nutrition plan
-app.post('/api/nutrition', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, name, description, dailyCalories, proteinGrams, carbsGrams, fatGrams, meals, status, startDate, endDate } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO nutrition_plans (professionalId, clientId, name, description, dailyCalories, proteinGrams, carbsGrams, fatGrams, meals, status, startDate, endDate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, clientId, name, description, dailyCalories, proteinGrams, carbsGrams, fatGrams, meals ? JSON.stringify(meals) : null, status || 'active', startDate, endDate],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
-    
-    const plan = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM nutrition_plans WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (plan.meals) plan.meals = JSON.parse(plan.meals);
-    res.status(201).json(plan);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get nutrition logs
-app.get('/api/nutrition/logs/:clientId', authenticateToken, async (req, res) => {
-  try {
-    const { date } = req.query;
-    let query = 'SELECT * FROM nutrition_logs WHERE clientId = ?';
-    let params = [req.params.clientId];
-    
-    if (date) {
-      query += ' AND date = ?';
-      params.push(date);
-    }
-    
-    query += ' ORDER BY createdAt DESC';
-    
-    const logs = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    res.json(logs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Add nutrition log
-app.post('/api/nutrition/logs', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, date, mealType, foodName, portionSize, calories, protein, carbs, fat, notes } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO nutrition_logs (clientId, date, mealType, foodName, portionSize, calories, protein, carbs, fat, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [clientId, date, mealType, foodName, portionSize, calories, protein, carbs, fat, notes],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
-    
-    res.status(201).json({ id: result.lastID, success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// NOTIFICATION ROUTES
-// ============================================================================
-
-// Get notification preferences
-app.get('/api/notifications/prefs/:clientId', authenticateToken, async (req, res) => {
-  try {
-    const prefs = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM notification_prefs WHERE clientId = ?', [req.params.clientId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (!prefs) {
-      // Return default preferences
-      return res.json({
-        clientId: req.params.clientId,
-        emailEnabled: true,
-        whatsappEnabled: false,
-        telegramEnabled: false,
-        appointmentReminders: true,
-        progressReminders: true,
-        marketingMessages: false
-      });
-    }
-    
-    res.json(prefs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update notification preferences
-app.put('/api/notifications/prefs/:clientId', authenticateToken, async (req, res) => {
-  try {
-    const { emailEnabled, whatsappEnabled, telegramEnabled, phone, chatId, appointmentReminders, progressReminders, marketingMessages } = req.body;
-    
-    // Check if prefs exist
-    const existing = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM notification_prefs WHERE clientId = ?', [req.params.clientId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (existing) {
-      await new Promise((resolve, reject) => {
-        db.run(
-          `UPDATE notification_prefs SET emailEnabled = ?, whatsappEnabled = ?, telegramEnabled = ?, phone = ?, chatId = ?, appointmentReminders = ?, progressReminders = ?, marketingMessages = ?, updatedAt = CURRENT_TIMESTAMP
-           WHERE clientId = ?`,
-          [emailEnabled ? 1 : 0, whatsappEnabled ? 1 : 0, telegramEnabled ? 1 : 0, phone, chatId, appointmentReminders ? 1 : 0, progressReminders ? 1 : 0, marketingMessages ? 1 : 0, req.params.clientId],
-          function(err) {
-            if (err) reject(err);
-            else resolve(this);
-          }
-        );
-      });
-    } else {
-      await new Promise((resolve, reject) => {
-        db.run(
-          `INSERT INTO notification_prefs (clientId, emailEnabled, whatsappEnabled, telegramEnabled, phone, chatId, appointmentReminders, progressReminders, marketingMessages)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [req.params.clientId, emailEnabled ? 1 : 0, whatsappEnabled ? 1 : 0, telegramEnabled ? 1 : 0, phone, chatId, appointmentReminders ? 1 : 0, progressReminders ? 1 : 0, marketingMessages ? 1 : 0],
-          function(err) {
-            if (err) reject(err);
-            else resolve(this);
-          }
-        );
-      });
-    }
-    
-    const prefs = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM notification_prefs WHERE clientId = ?', [req.params.clientId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.json(prefs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Send notification (WhatsApp/Telegram simulation)
-app.post('/api/notifications/send', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, type, channel, message } = req.body;
-    
-    // Get client notification prefs
-    const prefs = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM notification_prefs WHERE clientId = ?', [clientId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (!prefs) {
-      return res.status(400).json({ error: 'Client has no notification preferences set' });
-    }
-    
-    // Check if channel is enabled
-    if (channel === 'whatsapp' && !prefs.whatsappEnabled) {
-      return res.status(400).json({ error: 'WhatsApp notifications are disabled for this client' });
-    }
-    if (channel === 'telegram' && !prefs.telegramEnabled) {
-      return res.status(400).json({ error: 'Telegram notifications are disabled for this client' });
-    }
-    if (channel === 'email' && !prefs.emailEnabled) {
-      return res.status(400).json({ error: 'Email notifications are disabled for this client' });
-    }
-    
-    // In production, this would integrate with Twilio (WhatsApp) or Telegram Bot API
-    // For demo, we simulate the notification
-    const notificationResult = {
-      success: true,
-      channel,
-      type,
-      message,
-      sentAt: new Date().toISOString(),
-      note: `[DEMO] Notification would be sent via ${channel.toUpperCase()}`
-    };
-    
-    // Log the notification
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO notification_logs (clientId, type, channel, message, status, sentAt)
-         VALUES (?, ?, ?, ?, 'sent', CURRENT_TIMESTAMP)`,
-        [clientId, type, channel, message],
-        function(err) {
-          if (err) reject(err);
-          else resolve(this);
-        }
-      );
-    });
-    
-    res.json(notificationResult);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get notification history
-app.get('/api/notifications/history/:clientId', authenticateToken, async (req, res) => {
-  try {
-    const history = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM notification_logs WHERE clientId = ? ORDER BY createdAt DESC', [req.params.clientId], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    res.json(history);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// EXERCISE LIBRARY ROUTES
-// ============================================================================
-
-// Get all exercises
-app.get('/api/exercises', authenticateToken, async (req, res) => {
-  try {
-    const { category, difficulty } = req.query;
-    let query = 'SELECT * FROM exercises WHERE professionalId = ?';
-    let params = [req.user.id];
-    
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
-    if (difficulty) {
-      query += ' AND difficulty = ?';
-      params.push(difficulty);
-    }
-    
-    query += ' ORDER BY category, name';
-    
-    const exercises = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    exercises.forEach(ex => {
-      if (ex.muscleGroups) ex.muscleGroups = JSON.parse(ex.muscleGroups);
-    });
-    
-    res.json(exercises);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create exercise
-app.post('/api/exercises', authenticateToken, async (req, res) => {
-  try {
-    const { name, category, muscleGroups, equipment, difficulty, instructions, videoUrl, imageUrl } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO exercises (professionalId, name, category, muscleGroups, equipment, difficulty, instructions, videoUrl, imageUrl)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, name, category, muscleGroups ? JSON.stringify(muscleGroups) : null, equipment, difficulty || 'beginner', instructions, videoUrl, imageUrl],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const exercise = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM exercises WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.status(201).json(exercise);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// INVOICE ROUTES
-// ============================================================================
-
-// Get all invoices
-app.get('/api/invoices', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, status } = req.query;
-    let query = 'SELECT * FROM invoices WHERE professionalId = ?';
-    let params = [req.user.id];
-    
-    if (clientId) {
-      query += ' AND clientId = ?';
-      params.push(clientId);
-    }
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-    
-    query += ' ORDER BY createdAt DESC';
-    
-    const invoices = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    invoices.forEach(inv => {
-      if (inv.items) inv.items = JSON.parse(inv.items);
-    });
-    
-    res.json(invoices);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create invoice
-app.post('/api/invoices', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, invoiceNumber, amount, tax, total, status, dueDate, items, notes } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO invoices (professionalId, clientId, invoiceNumber, amount, tax, total, status, dueDate, items, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, clientId, invoiceNumber, amount, tax || 0, total, status || 'pending', dueDate, items ? JSON.stringify(items) : null, notes],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const invoice = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM invoices WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.status(201).json(invoice);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Mark invoice as paid
-app.put('/api/invoices/:id/pay', authenticateToken, async (req, res) => {
-  try {
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE invoices SET status = 'paid', paidDate = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND professionalId = ?`,
-        [req.params.id, req.user.id],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const invoice = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM invoices WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.json(invoice);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// GOALS ROUTES
-// ============================================================================
-
-// Get goals for a client
-app.get('/api/goals/:clientId', authenticateToken, async (req, res) => {
-  try {
-    const goals = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM goals WHERE clientId = ? AND professionalId = ? ORDER BY createdAt DESC', [req.params.clientId, req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    res.json(goals);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create goal
-app.post('/api/goals', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, title, description, targetDate, targetValue, currentValue, unit, status } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO goals (professionalId, clientId, title, description, targetDate, targetValue, currentValue, unit, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, clientId, title, description, targetDate, targetValue, currentValue || 0, unit, status || 'active'],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const goal = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM goals WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.status(201).json(goal);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update goal progress
-app.put('/api/goals/:id/progress', authenticateToken, async (req, res) => {
-  try {
-    const { currentValue } = req.body;
-    
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE goals SET currentValue = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ? AND professionalId = ?`,
-        [currentValue, req.params.id, req.user.id],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const goal = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM goals WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.json(goal);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// ATTENDANCE ROUTES
-// ============================================================================
-
-// Get attendance records
-app.get('/api/attendance', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, startDate, endDate } = req.query;
-    let query = 'SELECT * FROM attendance WHERE professionalId = ?';
-    let params = [req.user.id];
-    
-    if (clientId) {
-      query += ' AND clientId = ?';
-      params.push(clientId);
-    }
-    if (startDate) {
-      query += ' AND date(checkInTime) >= ?';
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += ' AND date(checkInTime) <= ?';
-      params.push(endDate);
-    }
-    
-    query += ' ORDER BY checkInTime DESC';
-    
-    const attendance = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    res.json(attendance);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Check in client
-app.post('/api/attendance/checkin', authenticateToken, async (req, res) => {
-  try {
-    const { clientId, appointmentId, notes } = req.body;
-    const checkInTime = new Date().toISOString();
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO attendance (professionalId, clientId, appointmentId, checkInTime, status, notes)
-         VALUES (?, ?, ?, ?, 'present', ?)`,
-        [req.user.id, clientId, appointmentId || null, checkInTime, notes],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    res.status(201).json({ id: result.lastID, checkInTime, status: 'present' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Check out client
-app.post('/api/attendance/:id/checkout', authenticateToken, async (req, res) => {
-  try {
-    const checkOutTime = new Date().toISOString();
-    
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE attendance SET checkOutTime = ? WHERE id = ? AND professionalId = ?`,
-        [checkOutTime, req.params.id, req.user.id],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const attendance = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM attendance WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.json(attendance);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
-// MARKETING CAMPAIGN ROUTES
-// ============================================================================
-
-// Get marketing campaigns
-app.get('/api/marketing', authenticateToken, async (req, res) => {
-  try {
-    const { status } = req.query;
-    let query = 'SELECT * FROM marketing_campaigns WHERE professionalId = ?';
-    let params = [req.user.id];
-    
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-    
-    query += ' ORDER BY createdAt DESC';
-    
-    const campaigns = await new Promise((resolve, reject) => {
-      db.all(query, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    res.json(campaigns);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create marketing campaign
-app.post('/api/marketing', authenticateToken, async (req, res) => {
-  try {
-    const { name, type, subject, message, targetAudience, status, scheduledAt } = req.body;
-    
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO marketing_campaigns (professionalId, name, type, subject, message, targetAudience, status, scheduledAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [req.user.id, name, type, subject, message, targetAudience, status || 'draft', scheduledAt],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const campaign = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM marketing_campaigns WHERE id = ?', [result.lastID], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.status(201).json(campaign);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Send marketing campaign (simulated)
-app.post('/api/marketing/:id/send', authenticateToken, async (req, res) => {
-  try {
-    // Get client count for this professional
-    const clients = await new Promise((resolve, reject) => {
-      db.all('SELECT COUNT(*) as count FROM clients WHERE professionalId = ?', [req.user.id], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    const recipientCount = clients[0]?.count || 0;
-    
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE marketing_campaigns SET status = 'sent', sentAt = CURRENT_TIMESTAMP, recipientCount = ? WHERE id = ? AND professionalId = ?`,
-        [recipientCount, req.params.id, req.user.id],
-        function(err) { if (err) reject(err); else resolve(this); }
-      );
-    });
-    
-    const campaign = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM marketing_campaigns WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    res.json({ 
-      ...campaign, 
-      note: `[DEMO] Campaign would be sent to ${recipientCount} recipients` 
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ============================================================================
 // START SERVER
 // ============================================================================
 
@@ -1331,5 +420,7 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Aura Platform API running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/`);
   console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
-  console.log(`\n📝 Sample login credentials:\n   Email: demo@aura.com\n   Password: (any password)\n`);
+  console.log(`\n📝 Sample login credentials:\n   Email: demo@aura.com\n   Password: demo123\n`);
 });
+
+module.exports = app;
