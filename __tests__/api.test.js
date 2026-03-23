@@ -73,9 +73,9 @@ describe('Aura Platform - API Structure Tests', () => {
       expect(serverContent).toContain('./db');
     });
 
-    test('should use better-sqlite3', () => {
+    test('should use sqlite3', () => {
       const dbContent = fs.readFileSync(path.join(__dirname, '../server/db.js'), 'utf8');
-      expect(dbContent).toContain('better-sqlite3');
+      expect(dbContent).toContain('sqlite3');
     });
   });
 });
