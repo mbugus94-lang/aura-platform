@@ -37,6 +37,16 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    version: require('../package.json').version
+  });
+});
+
 // Routes
 app.get('/', (req, res) => {
   res.json({
