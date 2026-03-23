@@ -1,79 +1,96 @@
-# Contributing Guidelines
+# Contributing to Aura Platform
 
-Thank you for your interest in contributing to this project! We welcome contributions from the community.
+Thank you for your interest in contributing to Aura Platform! This document provides guidelines and instructions for contributing.
 
-## How to Contribute
+## 🚀 Getting Started
 
-### Reporting Bugs
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally:
+   ```bash
+   git clone https://github.com/your-username/aura-platform.git
+   cd aura-platform
+   ```
+3. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+4. **Create a branch** for your changes:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
 
-Before creating a bug report, please check the existing issues to see if the problem has already been reported. When creating a bug report, please include:
+## 📝 Development Workflow
 
-- A clear, descriptive title
-- Steps to reproduce the issue
-- Expected behavior vs actual behavior
-- Your environment (OS, Node.js/Python version, etc.)
-- Any error messages or screenshots
-
-### Suggesting Enhancements
-
-Enhancement suggestions are welcome! Please provide:
-
-- A clear description of the feature
-- Why it would be useful
-- Possible implementation approach (if you have ideas)
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a new branch for your feature (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests (if available)
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to your fork (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Development Setup
+### Running the Application
 
 ```bash
-# Clone your fork
-git clone https://github.com/YOUR_USERNAME/REPO_NAME.git
-cd REPO_NAME
-
-# Install dependencies
-npm install
-# or
-pip install -r requirements.txt
+# Start the development server
+npm run dev
 
 # Run tests
 npm test
-# or
-pytest
+
+# Run linter
+npm run lint
 ```
 
-### Code Style
+### Making Changes
 
-- Follow the existing code style
-- Use meaningful variable and function names
+1. **Write clear, concise commit messages**
+2. **Add tests** for new functionality
+3. **Update documentation** as needed
+4. **Ensure all tests pass** before submitting
+
+## 🧪 Testing
+
+We use Jest for testing. Please add tests for any new features:
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+## 📋 Code Style
+
+- Use ESLint configuration provided
+- Follow existing code patterns
 - Add comments for complex logic
-- Keep functions focused and small
+- Use meaningful variable names
 
-### Commit Messages
+## 🐛 Reporting Bugs
 
-- Use the present tense ("Add feature" not "Added feature")
-- Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
-- Reference issues and pull requests liberally after the first line
+When reporting bugs, please include:
 
-## Code of Conduct
+- **Clear description** of the issue
+- **Steps to reproduce**
+- **Expected vs actual behavior**
+- **Environment details** (Node version, OS, etc.)
+- **Screenshots** if applicable
 
-This project adheres to a code of conduct. By participating, you are expected to uphold this code:
+## 💡 Feature Requests
 
-- Be respectful and inclusive
-- Welcome newcomers
-- Accept constructive criticism gracefully
-- Focus on what's best for the community
+We welcome feature requests! Please:
 
-## Questions?
+- **Check existing issues** first
+- **Describe the use case**
+- **Explain the proposed solution**
+- **Consider implementation complexity**
 
-Feel free to open an issue for questions or join discussions.
+## 🔒 Security
 
-Thank you for contributing!
+If you discover a security vulnerability, please email us directly rather than opening a public issue.
+
+## 📄 License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
+
+## 🙏 Recognition
+
+Contributors will be acknowledged in our README and release notes!
+
+---
+
+**Questions?** Open an issue or reach out to the maintainers.
