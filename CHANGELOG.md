@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-03-23
+
+### Changed
+- Updated dependencies to latest stable versions:
+  - better-sqlite3: ^9.4.3 → ^12.8.0
+  - uuid: ^11.1.0 → ^13.0.0
+  - multer: ^1.4.5-lts.1 → ^2.1.1
+  - jsonwebtoken: ^9.0.2 → ^9.0.3
+  - express: ^4.21.2 → ^4.22.1
+
 ## [1.0.3] - 2026-03-23
 
 ### Changed
