@@ -1,6 +1,6 @@
 {
   "name": "aura-platform",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Aura Platform - AI-Powered Wellness Business Management",
   "main": "server/index.js",
   "type": "commonjs",

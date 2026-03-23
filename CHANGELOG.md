@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-03-23
+
+### Security
+- **CRITICAL FIX**: Fixed authentication vulnerability where any password was accepted for existing users
+- Added proper bcrypt password verification in login route
+- Fixed registration to properly store hashed passwords in database
+- Added password column to users table schema
+- Added input validation for email and password fields
+
 ## [1.0.1] - 2026-03-22
 
 ### Security
