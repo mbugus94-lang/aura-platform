@@ -19,6 +19,7 @@ function initDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
       name TEXT NOT NULL,
       businessName TEXT,
       bio TEXT,
@@ -352,8 +353,8 @@ function insertSampleData() {
   const professionalId = 1;
   try {
     db.run(
-      `INSERT OR IGNORE INTO users (id, email, name, businessName, bio, role)
-       VALUES (1, 'demo@aura.com', 'Demo Professional', 'Aura Fitness', 'Professional fitness coach specializing in strength training and nutrition', 'professional')`
+      `INSERT OR IGNORE INTO users (id, email, password, name, businessName, bio, role)
+       VALUES (1, 'demo@aura.com', '$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrjlL8QlH2zQF3hYI3gEU8Y7R1tVC', 'Demo Professional', 'Aura Fitness', 'Professional fitness coach specializing in strength training and nutrition', 'professional')`
     );
   } catch (err) {
     console.error('Error inserting user:', err.message);

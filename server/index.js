@@ -64,7 +64,11 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // For demo, we accept any password if email exists
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
     const user = await new Promise((resolve, reject) => {
       db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
         if (err) reject(err);
@@ -73,6 +77,12 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
     if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -104,6 +114,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, name, password, businessName, bio } = req.body;
 
+    // Validate required fields
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: 'Email, name, and password are required' });
+    }
+
     // Check if user already exists
     const existingUser = await new Promise((resolve, reject) => {
       db.get('SELECT * FROM users WHERE email = ?', [email], (err, row) => {
@@ -119,11 +134,11 @@ app.post('/api/auth/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert user
+    // Insert user with password
     const result = await new Promise((resolve, reject) => {
       db.run(
-        'INSERT INTO users (email, name, businessName, bio, role) VALUES (?, ?, ?, ?, ?)',
-        [email, name, businessName || '', bio || '', 'professional'],
+        'INSERT INTO users (email, password, name, businessName, bio, role) VALUES (?, ?, ?, ?, ?, ?)',
+        [email, hashedPassword, name, businessName || '', bio || '', 'professional'],
         function(err) {
           if (err) reject(err);
           else resolve(this);
