@@ -1,25 +1,21 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 
 // Initialize database
 const dbPath = path.join(__dirname, 'aura.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database');
-  }
-});
+const db = new Database(dbPath);
+
+console.log('Connected to SQLite database');
 
 // Enable foreign keys
-db.run('PRAGMA foreign_keys = ON');
+db.exec('PRAGMA foreign_keys = ON');
 
 // Initialize tables
 function initDatabase() {
   console.log('Initializing database...');
 
   // Users table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
@@ -34,7 +30,7 @@ function initDatabase() {
   `);
 
   // Clients table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professionalId INTEGER NOT NULL,
@@ -54,7 +50,7 @@ function initDatabase() {
   `);
 
   // Appointments table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS appointments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -73,7 +69,7 @@ function initDatabase() {
   `);
 
   // Session notes table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS session_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       appointmentId INTEGER NOT NULL,
@@ -88,7 +84,7 @@ function initDatabase() {
   `);
 
   // Progress tracking table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS progress_tracking (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -104,7 +100,7 @@ function initDatabase() {
   `);
 
   // Programs table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS programs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -125,7 +121,7 @@ function initDatabase() {
   `);
 
   // Chat messages table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS chat_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER,
@@ -140,7 +136,7 @@ function initDatabase() {
   `);
 
   // Analytics events table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS analytics_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professionalId INTEGER NOT NULL,
@@ -152,7 +148,7 @@ function initDatabase() {
   `);
 
   // Nutrition plans table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS nutrition_plans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -175,7 +171,7 @@ function initDatabase() {
   `);
 
   // Nutrition logs table (daily food intake)
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS nutrition_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -194,7 +190,7 @@ function initDatabase() {
   `);
 
   // Notification preferences table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS notification_prefs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -213,7 +209,7 @@ function initDatabase() {
   `);
 
   // Notification logs table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS notification_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -229,7 +225,7 @@ function initDatabase() {
   `);
 
   // Exercise library table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS exercises (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professionalId INTEGER NOT NULL,
@@ -247,7 +243,7 @@ function initDatabase() {
   `);
 
   // Invoices table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -269,7 +265,7 @@ function initDatabase() {
   `);
 
   // Goals table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS goals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -289,7 +285,7 @@ function initDatabase() {
   `);
 
   // Attendance/check-ins table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS attendance (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       clientId INTEGER NOT NULL,
@@ -307,7 +303,7 @@ function initDatabase() {
   `);
 
   // Marketing campaigns table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS marketing_campaigns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professionalId INTEGER NOT NULL,
@@ -329,7 +325,7 @@ function initDatabase() {
   `);
 
   // Workout templates table
-  db.run(`
+  db.exec(`
     CREATE TABLE IF NOT EXISTS workout_templates (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       professionalId INTEGER NOT NULL,
@@ -354,14 +350,14 @@ function insertSampleData() {
 
   // Professional user
   const professionalId = 1;
-  db.run(
-    `INSERT OR IGNORE INTO users (id, email, name, businessName, bio, role)
-     VALUES (1, 'demo@aura.com', 'Demo Professional', 'Aura Fitness', 'Professional fitness coach specializing in strength training and nutrition', 'professional')`,
-    [],
-    function(err) {
-      if (err) console.error('Error inserting user:', err.message);
-    }
-  );
+  try {
+    db.run(
+      `INSERT OR IGNORE INTO users (id, email, name, businessName, bio, role)
+       VALUES (1, 'demo@aura.com', 'Demo Professional', 'Aura Fitness', 'Professional fitness coach specializing in strength training and nutrition', 'professional')`
+    );
+  } catch (err) {
+    console.error('Error inserting user:', err.message);
+  }
 
   // Sample clients
   const clients = [
@@ -1186,11 +1182,6 @@ function insertMarketingCampaigns(professionalId) {
 
 // Initialize
 initDatabase();
-
-// Wait for tables to be created, then insert sample data
-setTimeout(() => {
-  console.log('Tables created, inserting sample data...');
-  insertSampleData();
-}, 1000);
+insertSampleData();
 
 module.exports = db;
