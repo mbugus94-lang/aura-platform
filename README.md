@@ -7,7 +7,7 @@
   <a href="https://github.com/mbugus94-lang/aura-platform/fork">
     <img src="https://img.shields.io/github/forks/mbugus94-lang/aura-platform?style=social" alt="Forks">
   </a>
-  <img src="https://img.shields.io/badge/Version-1.0.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.0.5-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/Node.js-18+-yellow" alt="Node.js">
 </p>

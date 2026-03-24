@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated devDependencies to latest stable versions:
   - prettier: ^3.3.3 → ^3.5.3
 
+### Fixed
+- **Documentation**: Fixed README version badge from 1.0.0 to 1.0.5 to match package.json
+- **Documentation**: Updated health check response example to show correct version
+
 ## [1.0.4] - 2026-03-23
 
 ### Changed
