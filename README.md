@@ -7,7 +7,7 @@
   <a href="https://github.com/mbugus94-lang/aura-platform/fork">
     <img src="https://img.shields.io/github/forks/mbugus94-lang/aura-platform?style=social" alt="Forks">
   </a>
-  <img src="https://img.shields.io/badge/Version-1.0.6-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.0.7-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/Node.js-18+-yellow" alt="Node.js">
 </p>
@@ -69,13 +69,22 @@ npm run dev
 ## 📸 Screenshots
 
 ### Login Page
-![Login](https://via.placeholder.com/800x400/667eea/ffffff?text=Aura+Login)
+Clean, modern authentication interface with secure JWT-based login.
 
 ### Dashboard
-![Dashboard](https://via.placeholder.com/800x400/10b981/ffffff?text=Dashboard+Overview)
+Comprehensive overview showing:
+- Client statistics
+- Revenue metrics  
+- Upcoming appointments
+- Recent activity feed
 
 ### AI Chat
-![Chat](https://via.placeholder.com/800x400/f59e0b/ffffff?text=AI+Chat+Assistant)
+Interactive AI assistant for:
+- Fitness guidance
+- Nutrition advice
+- Business insights
+
+> 💡 **Note:** See the live demo at `http://localhost:3000` after running the application.
 
 ---
 
@@ -126,7 +135,7 @@ Response:
   "status": "ok",
   "timestamp": "2025-01-15T10:30:00.000Z",
   "uptime": 3600,
-  "version": "1.0.6"
+  "version": "1.0.7"
 }
 ```
 
