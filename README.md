@@ -233,3 +233,46 @@ MIT License - see [LICENSE](LICENSE)
 <p align="center">
   Built with ❤️ by <a href="https://github.com/mbugus94-lang">David Gakere</a>
 </p>
+
+## Usage
+
+### Quick Start
+
+After installation, you can start using the application:
+
+```bash
+# Start the application
+npm start  # For Node.js projects
+# or
+python main.py  # For Python projects
+```
+
+### Development
+
+To run in development mode:
+
+```bash
+npm run dev  # For Node.js projects
+# or
+python -m pytest  # Run tests for Python projects
+```
+
+### Testing
+
+Run the test suite:
+
+```bash
+npm test  # For Node.js projects
+# or
+pytest  # For Python projects
+```
+
+### Environment Variables
+
+Make sure to configure the following environment variables in your `.env` file:
+
+- `NODE_ENV` - Set to `development` or `production`
+- `API_KEY` - Your API key (if applicable)
+- `DATABASE_URL` - Database connection string (if applicable)
+
+See `.env.example` for a complete list of required variables.
