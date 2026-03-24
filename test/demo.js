@@ -1,8 +1,12 @@
 // Comprehensive API smoke test
 // Run: node test/demo.js
 
-const BASE_URL = 'http://localhost:3000/api';
+const { startServer } = require('../server/index');
+
+const PORT = Number(process.env.TEST_PORT || 3100);
+const BASE_URL = `http://localhost:${PORT}/api`;
 let authToken = '';
+let server;
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, options);
@@ -27,6 +31,9 @@ async function login() {
 
 async function run() {
   console.log('Aura Platform API test start\n');
+
+  server = startServer(PORT);
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   await login();
 
@@ -58,7 +65,19 @@ async function run() {
   console.log('\nAPI test completed successfully.');
 }
 
-run().catch((err) => {
-  console.error('API test failed:', err.message);
-  process.exit(1);
-});
+run()
+  .then(() => {
+    if (server) {
+      server.close(() => process.exit(0));
+      return;
+    }
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error('API test failed:', err.message);
+    if (server) {
+      server.close(() => process.exit(1));
+      return;
+    }
+    process.exit(1);
+  });

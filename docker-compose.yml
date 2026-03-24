@@ -1,0 +1,15 @@
+services:
+  aura-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aura-platform
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - APP_NAME=${APP_NAME:-Fluxora}
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    restart: unless-stopped

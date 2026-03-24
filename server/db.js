@@ -1205,13 +1205,11 @@ function insertMarketingCampaigns(professionalId) {
   });
 }
 
-// Initialize
-initDatabase();
-
-// Wait for tables to be created, then insert sample data
-setTimeout(() => {
+// Initialize in serialized order so sample seeding never races table creation.
+db.serialize(() => {
+  initDatabase();
   console.log('Tables created, inserting sample data...');
   insertSampleData();
-}, 1000);
+});
 
 module.exports = db;

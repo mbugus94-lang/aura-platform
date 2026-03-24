@@ -4,10 +4,14 @@
   "description": "Fluxora - AI-powered service business management",
   "main": "server/index.js",
   "type": "commonjs",
+  "engines": {
+    "node": "20.x || 22.x"
+  },
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node test/demo.js"
+    "test": "node test/demo.js",
+    "verify": "node --check server/index.js && node --check server/db.js && node --check test/demo.js"
   },
   "keywords": ["service", "crm", "scheduling", "invoicing", "business", "management", "ai"],
   "author": "Aura Team",
@@ -18,7 +22,7 @@
     "helmet": "^7.1.0",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
-    "sqlite3": "^5.1.6",
+    "sqlite3": "^5.1.7",
     "uuid": "^9.0.1",
     "multer": "^1.4.5-lts.1"
   },

@@ -1469,13 +1469,6 @@ app.post('/api/marketing/:id/send', authenticateToken, async (req, res) => {
 // START SERVER
 // ============================================================================
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 ${APP_NAME} API running on http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/`);
-  console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
-  console.log(`\n📝 Sample login credentials:\n   Email: demo@aura.com\n   Password: demo123\n`);
-});
-
 // Operational summary
 app.get('/api/system/summary', authenticateToken, async (req, res) => {
   try {
@@ -1512,6 +1505,15 @@ app.get('/api/system/summary', authenticateToken, async (req, res) => {
   }
 });
 
+function startServer(port = PORT) {
+  return app.listen(port, () => {
+    console.log(`\n${APP_NAME} API running on http://localhost:${port}`);
+    console.log(`API Documentation: http://localhost:${port}/`);
+    console.log(`Health check: http://localhost:${port}/api/health`);
+    console.log(`\nSample login credentials:\n   Email: demo@aura.com\n   Password: demo123\n`);
+  });
+}
+
 // Data export for portability and backup
 app.get('/api/system/export', authenticateToken, async (req, res) => {
   try {
@@ -1543,3 +1545,9 @@ app.get('/api/system/export', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+module.exports = { app, startServer };
+
+if (require.main === module) {
+  startServer();
+}
