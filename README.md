@@ -7,7 +7,7 @@
   <a href="https://github.com/mbugus94-lang/aura-platform/fork">
     <img src="https://img.shields.io/github/forks/mbugus94-lang/aura-platform?style=social" alt="Forks">
   </a>
-  <img src="https://img.shields.io/badge/Version-1.0.5-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.0.6-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/Node.js-18+-yellow" alt="Node.js">
 </p>
@@ -126,7 +126,7 @@ Response:
   "status": "ok",
   "timestamp": "2025-01-15T10:30:00.000Z",
   "uptime": 3600,
-  "version": "1.0.5"
+  "version": "1.0.6"
 }
 ```
 
@@ -193,6 +193,40 @@ node test/demo.js
 
 ---
 
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Port already in use:**
+```bash
+# Change the port
+PORT=3001 npm run dev
+```
+
+**Database locked:**
+```bash
+# Stop the server and delete lock files
+rm server/aura.db-shm server/aura.db-wal
+```
+
+**Authentication errors:**
+- Ensure you're using demo credentials: `demo@aura.com` / `demo123`
+- Check JWT_SECRET is set in production
+
+**npm install fails:**
+```bash
+# Clear cache and reinstall
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**SQLite errors:**
+- Ensure better-sqlite3 is compatible with your Node version
+- On Windows, you may need Visual Studio Build Tools
+
+---
+
 ## 🤝 Contributing
 
 1. Fork the repo
@@ -233,46 +267,3 @@ MIT License - see [LICENSE](LICENSE)
 <p align="center">
   Built with ❤️ by <a href="https://github.com/mbugus94-lang">David Gakere</a>
 </p>
-
-## Usage
-
-### Quick Start
-
-After installation, you can start using the application:
-
-```bash
-# Start the application
-npm start  # For Node.js projects
-# or
-python main.py  # For Python projects
-```
-
-### Development
-
-To run in development mode:
-
-```bash
-npm run dev  # For Node.js projects
-# or
-python -m pytest  # Run tests for Python projects
-```
-
-### Testing
-
-Run the test suite:
-
-```bash
-npm test  # For Node.js projects
-# or
-pytest  # For Python projects
-```
-
-### Environment Variables
-
-Make sure to configure the following environment variables in your `.env` file:
-
-- `NODE_ENV` - Set to `development` or `production`
-- `API_KEY` - Your API key (if applicable)
-- `DATABASE_URL` - Database connection string (if applicable)
-
-See `.env.example` for a complete list of required variables.
