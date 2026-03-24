@@ -23,7 +23,7 @@ describe('Aura Platform', () => {
       );
       
       expect(packageJson.dependencies).toHaveProperty('express');
-      expect(packageJson.dependencies).toHaveProperty('better-sqlite3');
+      expect(packageJson.dependencies).toHaveProperty('sqlite3');
       expect(packageJson.dependencies).toHaveProperty('bcryptjs');
       expect(packageJson.dependencies).toHaveProperty('jsonwebtoken');
     });

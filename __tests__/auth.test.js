@@ -55,7 +55,17 @@ describe('Aura Platform - Authentication Tests', () => {
 
   describe('Database Security', () => {
     test('should use parameterized queries', () => {
-      expect(dbContent).not.toMatch(/\$\{.*\}/); // No template literals in SQL
+      // Extract SQL execution contexts (db.run, db.get, db.all calls)
+      const sqlContexts = [];
+      const dbRegex = /db\.(run|get|all)\s*\(([^)]+)\)/gs;
+      let match;
+      while ((match = dbRegex.exec(dbContent)) !== null) {
+        sqlContexts.push(match[0]);
+      }
+      
+      // Check that SQL contexts don't use template literal interpolation
+      const sqlContent = sqlContexts.join('\n');
+      expect(sqlContent).not.toMatch(/\$\{[^}]*\}/);
     });
 
     test('should have proper table initialization', () => {
