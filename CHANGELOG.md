@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-03-24
+
+### Changed
+- Updated express from 4.22.1 to 5.2.1 for latest features and security improvements
+- Added enhanced error handling middleware
+- Improved security headers configuration
+
 ## [1.0.5] - 2026-03-24
 
 ### Changed
