@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const db = require('./db');
 const openaiService = require('./services/openaiService');
 const emailService = require('./services/emailService');
+const SchedulerService = require('./services/schedulerService');
+const CalendarService = require('./services/calendarService');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -58,7 +60,9 @@ app.get('/health', (req, res) => {
     version: require('../package.json').version,
     services: {
       ai: openaiService.isAvailable,
-      email: emailService.isConfigured
+      email: emailService.isConfigured,
+      scheduler: SchedulerService.isInitialized,
+      calendar: CalendarService.isConfigured
     }
   });
 });
@@ -860,6 +864,161 @@ app.post('/api/appointments/:id/remind', authenticateToken, async (req, res) => 
 });
 
 // ============================================================================
+// CALENDAR INTEGRATION ROUTES
+// ============================================================================
+
+// Get calendar connection status
+app.get('/api/calendar/status', authenticateToken, async (req, res) => {
+  try {
+    const status = CalendarService.getConnectionStatus(req.user.id);
+    res.json({
+      ...status,
+      serviceConfigured: CalendarService.isConfigured
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Google Calendar OAuth URL
+app.get('/api/calendar/auth', authenticateToken, async (req, res) => {
+  try {
+    if (!CalendarService.isConfigured) {
+      return res.status(503).json({ 
+        error: 'Calendar service not configured',
+        message: 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables'
+      });
+    }
+    
+    const authUrl = CalendarService.getAuthUrl(req.user.id);
+    res.json({ authUrl, message: 'Visit this URL to connect your Google Calendar' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// OAuth callback handler
+app.get('/api/calendar/oauth/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    
+    if (!code || !state) {
+      return res.status(400).json({ error: 'Missing code or state parameter' });
+    }
+    
+    // Decode state to get professionalId
+    const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+    const { professionalId } = stateData;
+    
+    await CalendarService.exchangeCode(code, professionalId);
+    
+    res.send(`
+      <html>
+        <head><title>Calendar Connected</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1 style="color: #10b981;">✅ Google Calendar Connected!</h1>
+          <p>Your calendar has been successfully connected to Aura Platform.</p>
+          <p>You can now close this window and return to the app.</p>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    res.status(500).send(`
+      <html>
+        <head><title>Connection Failed</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+          <h1 style="color: #ef4444;">❌ Connection Failed</h1>
+          <p>${error.message}</p>
+          <p>Please try again or contact support.</p>
+        </body>
+      </html>
+    `);
+  }
+});
+
+// Sync appointment to Google Calendar
+app.post('/api/appointments/:id/sync-calendar', authenticateToken, async (req, res) => {
+  try {
+    const appointment = await new Promise((resolve, reject) => {
+      db.get(`
+        SELECT a.*, c.name as clientName, c.email as clientEmail
+        FROM appointments a
+        JOIN clients c ON a.clientId = c.id
+        WHERE a.id = ? AND a.professionalId = ?
+      `, [req.params.id, req.user.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    const professional = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM users WHERE id = ?', [req.user.id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    const client = {
+      name: appointment.clientName,
+      email: appointment.clientEmail
+    };
+
+    const eventId = await CalendarService.createEvent(appointment, client, professional);
+    
+    if (eventId) {
+      res.json({ 
+        message: 'Appointment synced to Google Calendar', 
+        eventId,
+        calendarEventUrl: `https://calendar.google.com/calendar/r/eventedit/${eventId}`
+      });
+    } else {
+      res.status(503).json({ 
+        error: 'Failed to sync to calendar',
+        message: 'Check calendar connection status and ensure calendar is connected'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Sync all upcoming appointments to calendar
+app.post('/api/calendar/sync-all', authenticateToken, async (req, res) => {
+  try {
+    const result = await CalendarService.syncAllAppointments(req.user.id);
+    
+    if (result.error) {
+      return res.status(503).json({ error: result.error });
+    }
+    
+    res.json({
+      message: 'Appointments synced to Google Calendar',
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Disconnect Google Calendar
+app.delete('/api/calendar/disconnect', authenticateToken, async (req, res) => {
+  try {
+    const success = CalendarService.disconnect(req.user.id);
+    if (success) {
+      res.json({ message: 'Google Calendar disconnected successfully' });
+    } else {
+      res.status(500).json({ error: 'Failed to disconnect calendar' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
 // 404 ERROR HANDLER
 // ============================================================================
 
@@ -880,6 +1039,16 @@ app.use((err, req, res, next) => {
 // ============================================================================
 // START SERVER
 // ============================================================================
+
+// Initialize scheduler service
+SchedulerService.initialize();
+
+// Initialize calendar service
+if (CalendarService.isConfigured) {
+  console.log('📅 Calendar Service: ✅ Configured');
+} else {
+  console.log('📅 Calendar Service: ⚠️ Not configured (set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)');
+}
 
 app.listen(PORT, () => {
   console.log(`\n🚀 ${APP_NAME} v${require('../package.json').version} API running on http://localhost:${PORT}`);

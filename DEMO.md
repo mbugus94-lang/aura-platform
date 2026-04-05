@@ -66,7 +66,78 @@ open http://localhost:3000
 - Track payment status
 - Email invoices to clients
 
-### 7. Analytics Dashboard
+**Try it:**
+```bash
+curl -X POST http://localhost:3000/api/invoices \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clientId": 1,
+    "amount": 150.00,
+    "total": 150.00,
+    "dueDate": "2025-03-01"
+  }'
+```
+
+### 7. Automated Email Scheduling 🆕
+- Automatic daily appointment reminders (9:00 AM)
+- Weekly business summaries (Mondays 8:00 AM)
+- Progress check-ins every 3 days
+- Overdue invoice reminders
+- All powered by node-cron scheduler
+
+**Scheduler runs automatically when server starts:**
+```bash
+# Check health endpoint to see scheduler status
+curl http://localhost:3000/health
+```
+
+**Manual trigger examples:**
+```bash
+# Send appointment reminder
+curl -X POST http://localhost:3000/api/appointments/1/remind \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 8. Google Calendar Integration 🆕
+- Sync appointments to Google Calendar
+- Automatic event creation with reminders
+- Update and delete events when appointments change
+- OAuth2 secure authentication
+
+**Setup:**
+```bash
+# 1. Configure Google OAuth credentials in .env
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# 2. Get OAuth URL
+curl http://localhost:3000/api/calendar/auth \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# 3. Visit the authUrl to connect your calendar
+
+# 4. Check connection status
+curl http://localhost:3000/api/calendar/status \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Sync appointments:**
+```bash
+# Sync single appointment
+curl -X POST http://localhost:3000/api/appointments/1/sync-calendar \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Sync all upcoming appointments
+curl -X POST http://localhost:3000/api/calendar/sync-all \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Disconnect calendar
+curl -X DELETE http://localhost:3000/api/calendar/disconnect \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### 9. Analytics Dashboard
 - Business metrics at a glance
 - Client retention rates
 - Revenue tracking

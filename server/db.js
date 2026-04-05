@@ -56,6 +56,8 @@ function initDatabase() {
       status TEXT DEFAULT 'scheduled',
       notes TEXT,
       remindersSet INTEGER DEFAULT 0,
+      reminderSent INTEGER DEFAULT 0,
+      googleCalendarEventId TEXT,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (clientId) REFERENCES clients(id) ON DELETE CASCADE,
@@ -217,6 +219,7 @@ function initDatabase() {
       status TEXT DEFAULT 'pending',
       dueDate TEXT,
       paidDate TEXT,
+      lastReminder TEXT,
       items TEXT,
       notes TEXT,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -287,6 +290,33 @@ function initDatabase() {
       difficulty TEXT DEFAULT 'beginner',
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+
+    // Professional settings table for Google Calendar tokens
+    `CREATE TABLE IF NOT EXISTS professional_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professionalId INTEGER NOT NULL UNIQUE,
+      googleCalendarTokens TEXT,
+      emailSettings TEXT,
+      notificationPreferences TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+
+    // Scheduled emails table
+    `CREATE TABLE IF NOT EXISTS scheduled_emails (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      professionalId INTEGER NOT NULL,
+      recipientEmail TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      htmlContent TEXT NOT NULL,
+      scheduledTime TEXT NOT NULL,
+      status TEXT DEFAULT 'scheduled',
+      sentAt TEXT,
+      error TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (professionalId) REFERENCES users(id) ON DELETE CASCADE
     )`
   ];

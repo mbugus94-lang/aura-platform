@@ -36,6 +36,8 @@
 - 🤖 **AI Chat Assistant** - 24/7 AI-powered fitness & nutrition guidance
 - 👥 **Client Management** - Full CRM with health goals, measurements, notes
 - 📅 **Scheduling** - Appointment booking with calendar sync
+- 📅 **Google Calendar Integration** - Sync appointments to Google Calendar with OAuth
+- ⏰ **Automated Email Scheduling** - Daily reminders, weekly summaries, invoice reminders
 - 📈 **Progress Tracking** - Weight, body fat, measurements over time
 - 🎯 **Program Builder** - Create workout & nutrition programs
 - 📊 **Analytics Dashboard** - Revenue, retention, and performance metrics
@@ -256,8 +258,8 @@ MIT License - see [LICENSE](LICENSE)
 
 - [ ] User registration & roles
 - [ ] File uploads for client documents
-- [ ] Google Calendar integration
-- [ ] Email notifications
+- [x] Google Calendar integration
+- [x] Email notifications
 - [ ] Payment processing (Stripe)
 - [ ] Mobile app (React Native)
 - [ ] Multi-language support
